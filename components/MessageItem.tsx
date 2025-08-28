@@ -65,7 +65,10 @@ export function MessageItem({ m }: { m: any }) {
             textAlign: "right",
           }}
         >
-          {m.created_at}
+          {new Date(m.created_at).toLocaleTimeString("th-TH", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </Text>
       </View>
     </View>

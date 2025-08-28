@@ -1,19 +1,29 @@
 import { api } from "./api";
 
-export async function login(payload: { email?: string; username?: string; password: string; }) {
-  const { data } = await api.post("/api/auth/login.php", payload);
-  if (!data.success) throw new Error(data.message || "Login failed");
-  return data.data as { user: any; token: string };
+/** ปรับตามโครงจริงของ API คุณ */
+export type User = {
+  id: number;
+  email: string;
+  username: string;
+  avatar: string | null;
+  friend_code: string | null;
+  created_at: string | null;
+};
+
+export async function login(payload:{ email?:string; username?:string; password:string }) {
+  const { data } = await api.post("/api/auth/login.php", payload, { validateStatus:()=>true });
+  if (!data.success) throw new Error(data.message || "Login failed"); // ← จะโยน "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+  return data.data;
 }
 
 export async function register(payload: { email: string; username: string; password: string; avatar?: string; friend_code?: string; }) {
-  const { data } = await api.post("/api/auth/register.php", payload);
+  const { data } = await api.post("/api/auth/register.php", payload, { validateStatus:()=>true });
   if (!data.success) throw new Error(data.message || "Register failed");
-  return data.data as { user: any; token: string };
+  return data.data as { user: User; token: string };
 }
 
 export async function profile() {
-  const { data } = await api.get("/api/auth/profile.php");
+  const { data } = await api.get("/api/auth/profile.php", { validateStatus:()=>true });
   if (!data.success) throw new Error(data.message || "Profile failed");
   return data.data.user;
 }

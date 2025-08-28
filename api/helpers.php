@@ -2,21 +2,38 @@
 // api/helpers.php
 declare(strict_types=1);
 
+// --- เพิ่ม: ตั้ง timezone ให้เวลาถูกต้องตามไทย ---
+date_default_timezone_set('Asia/Bangkok');
+
+// --- แนะนำ: ปิดการแสดง error เป็น HTML และ log ลงไฟล์แทน (โปรดสร้างโฟลเดอร์ storage/) ---
+ini_set('display_errors', '0');         // ไม่พ่น Warning/Notice ปน JSON
+ini_set('log_errors', '1');
+@mkdir(__DIR__ . '/../storage', 0777, true);
+ini_set('error_log', __DIR__ . '/../storage/php-error.log');
+
 require_once __DIR__ . '/db.php';
 
 function cors(): void {
   header('Content-Type: application/json; charset=utf-8');
   header('Access-Control-Allow-Origin: ' . (getenv('CORS_ORIGIN') ?: '*'));
-  header('Access-Control-Allow-Headers: Content-Type, Authorization');
-  header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+  header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+  // --- เพิ่ม: รองรับวิธีอื่น ๆ เผื่ออนาคตต้องใช้ ---
+  header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  header('Access-Control-Max-Age: 86400'); // cache preflight
+
   if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
+    // กันเศษ output ค้าง
+    while (ob_get_level()) { ob_end_clean(); }
     exit;
   }
 }
 
 function jsonResponse(bool $success, $data = null, string $message = '', int $code = 200): void {
   http_response_code($code);
+  // --- สำคัญ: ล้าง buffer ทั้งหมดก่อน เพื่อกัน Warning/ช่องว่างปน JSON ---
+  while (ob_get_level()) { ob_end_clean(); }
+
   echo json_encode([
     'success' => $success,
     'message' => $message,
@@ -31,9 +48,7 @@ function getJsonInput(): array {
   return is_array($data) ? $data : [];
 }
 
-/** Simple HMAC token (ไม่ใช่ JWT มาตรฐาน แต่เบาและพอใช้ได้)
- * payload: user_id, exp (unix)
- */
+/** Simple HMAC token (ไม่ใช่ JWT มาตรฐาน) */
 function makeToken(int $userId, int $ttlSeconds = 86400): string {
   $secret = getenv('APP_KEY') ?: 'change_me';
   $payload = [
@@ -60,24 +75,16 @@ function verifyToken(?string $token): ?array {
 }
 
 function readAuthHeader(): ?string {
-  // 1) มาตรฐาน
   $hdr = $_SERVER['HTTP_AUTHORIZATION'] ?? null;
-
-  // 2) บางเซิร์ฟเวอร์จะวิ่งมาเป็นตัวนี้
   if (!$hdr && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
     $hdr = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
   }
-
-  // 3) Apache specific
   if (!$hdr && function_exists('apache_request_headers')) {
     $headers = apache_request_headers();
     foreach ($headers as $k => $v) {
-      if (strcasecmp($k, 'Authorization') === 0) {
-        $hdr = $v; break;
-      }
+      if (strcasecmp($k, 'Authorization') === 0) { $hdr = $v; break; }
     }
   }
-
   return $hdr ? trim($hdr) : null;
 }
 
@@ -89,9 +96,9 @@ function authGuard(): int {
     $token = trim(substr($hdr, 7));
   }
 
-  // Fallback เพื่อดีบัก (อย่าลืมเอาออกภายหลังเมื่อขึ้นโปรดักชัน)
+  // Fallback debug ผ่าน query (แนะนำเอาออกเมื่อขึ้น Prod)
   if (!$token && !empty($_GET['token'])) {
-    $token = trim($_GET['token']);
+    $token = trim((string)$_GET['token']);
   }
 
   $payload = verifyToken($token);

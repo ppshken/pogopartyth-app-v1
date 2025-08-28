@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { getRoom, joinRoom, leaveRoom } from "../../../lib/raid";
+import { getRoom, joinRoom, leaveRoom } from "../../lib/raid";
 
 export default function RoomDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,7 +32,7 @@ export default function RoomDetail() {
       }
       await load();
     } catch (e: any) {
-      Alert.alert("Error", e.message || "failed");
+      Alert.alert("Error", e.message);
     } finally {
       setLoading(false);
     }
@@ -74,7 +74,7 @@ export default function RoomDetail() {
       </View>
 
 
-      <TouchableOpacity onPress={() => router.push(`/(tabs)/rooms/${room.id}/chat`)}
+      <TouchableOpacity onPress={() => router.push(`/rooms/${room.id}/chat`)}
         style={{ marginTop: 16, backgroundColor: "#333", padding: 12, borderRadius: 10 }}>
         <Text style={{ color: "#fff", textAlign: "center" }}>เข้าแชท</Text>
       </TouchableOpacity>

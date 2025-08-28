@@ -57,7 +57,7 @@ $sql = "
     (SELECT COUNT(*) FROM user_raid_rooms ur WHERE ur.room_id = r.id) AS current_members
   FROM raid_rooms r
   $where
-  ORDER BY r.start_time ASC, r.id DESC
+  ORDER BY r.start_time DESC, r.id ASC
 ";
 
 // ถ้า all=1 จะดึง “ทุกห้องที่ตรง filter” แต่ป้องกันล้นด้วย HARD_CAP

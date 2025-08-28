@@ -23,7 +23,7 @@ $stmt->execute([':u' => $emailOrUsername]);
 $user = $stmt->fetch();
 
 if (!$user || !password_verify($password, $user['password_hash'])) {
-  jsonResponse(false, null, 'อีเมล/รหัสผ่านไม่ถูกต้อง', 401);
+  jsonResponse(false, null, 'อีเมลหรือรหัสผ่านไม่ถูกต้อง', 401);
 }
 
 $token = makeToken((int)$user['id'], 86400 * 7); // 7 วัน

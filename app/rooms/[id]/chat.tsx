@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { getMessages, sendMessage, ChatMessage } from "../../../../lib/chat";
-import { MessageItem } from "../../../../components/MessageItem";
+import { getMessages, sendMessage, ChatMessage } from "../../../lib/chat";
+import { MessageItem } from "../../../components/MessageItem";
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const roomId = Number(id);
@@ -37,7 +37,7 @@ export default function ChatScreen() {
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={90} // ปรับตาม header ของคุณ
+      keyboardVerticalOffset={70} // ปรับตาม header ของคุณ
     >
       <View style={{ flex: 1, padding: 16 }}>
         <FlatList
@@ -47,7 +47,7 @@ export default function ChatScreen() {
           contentContainerStyle={{ paddingBottom: 16 }}
         />
 
-        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, marginBottom: 24 }}>
           <TextInput
             value={text}
             onChangeText={setText}

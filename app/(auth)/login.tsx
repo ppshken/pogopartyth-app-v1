@@ -5,8 +5,8 @@ import { useRouter } from "expo-router";
 import { useAuth } from "../../store/authStore";
 
 export default function Login() {
-  const [email, setEmail] = useState("demo@ppth.com");
-  const [password, setPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const setAuth = useAuth((s)=>s.setAuth);
@@ -16,9 +16,9 @@ export default function Login() {
     try {
       const { user, token } = await login({ email, password });
       await setAuth(user, token);
-      router.replace("/(tabs)/room_raid");
+      router.replace("/room_raid");
     } catch (e:any) {
-      Alert.alert("Login failed", e.message || "Unknown error");
+      Alert.alert("Login failed" , e.message);
     } finally {
       setLoading(false);
     }
@@ -35,9 +35,12 @@ export default function Login() {
         style={{ backgroundColor:"#2f6fed", padding:14, borderRadius:10, alignItems:"center" }}>
         <Text style={{ color:"#fff", fontWeight:"700" }}>{loading? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={()=>router.push("/(auth)/register")} style={{ marginTop:12, alignItems:"center" }}>
-        <Text>ยังไม่มีบัญชี? สมัครสมาชิก</Text>
-      </TouchableOpacity>
+      <View style={{ marginTop:24, flexDirection:"row", justifyContent:"center", gap:8 }}>
+      <Text>ยังไม่มีบัญชี?</Text>
+        <TouchableOpacity onPress={()=>router.push("/(auth)/register")} style={{alignItems:"center" }}>
+          <Text style={{textDecorationLine: "underline"}}>สมัครสมาชิก</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
