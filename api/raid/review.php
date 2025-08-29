@@ -61,7 +61,7 @@ try {
 
   // 3) เงื่อนไขเวลา: อนุญาตให้รีวิวหลังถึงเวลาเริ่ม หรือห้องถูกปิด/ยกเลิก
   $startOk = (strtotime($room['start_time']) <= time());
-  $statusOk = in_array($room['status'], ['closed','canceled'], true);
+  $statusOk = in_array($room['status'], ['closed','canceled','invited'], true);
   if (!$startOk && !$statusOk) {
     $db->rollBack();
     jsonResponse(false, null, 'ยังไม่ถึงเวลารีวิว (ยังไม่ถึงเวลาเริ่ม หรือห้องยัง active)', 409);

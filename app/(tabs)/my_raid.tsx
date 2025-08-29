@@ -1,134 +1,266 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
+import { useAuth } from "../../store/authStore";
 
-type RaidRoom = {
+type MyRoom = {
   id: number;
   boss: string;
-  start_time: string;
-  status: string;
-  current_members: number;
+  start_time: string;              // "YYYY-MM-DD HH:mm:ss"
+  status: "active" | "closed" | "canceled" | "invited" | string;
   max_members: number;
-  is_owner?: boolean;
+  current_members?: number;
+  is_full?: boolean;
+  note?: string | null;
+  owner_id?: number;
+  role?: "owner" | "member";       // แนะนำให้ my_rooms.php ส่งมาด้วย
+  owner?: { id: number; username: string; avatar?: string | null } | null;
 };
 
+const BOSS_IMAGES: Record<string, string> = {
+  Mewtwo: "https://img.pokemondb.net/artwork/large/mewtwo.jpg",
+  Rayquaza: "https://img.pokemondb.net/artwork/large/rayquaza.jpg",
+  Groudon: "https://img.pokemondb.net/artwork/large/groudon.jpg",
+  Kyogre: "https://img.pokemondb.net/artwork/large/kyogre.jpg",
+};
+const FALLBACK =
+  "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=1200&auto=format&fit=crop";
+
+// ------- utils -------
+const pad2 = (n: number) => n.toString().padStart(2, "0");
+function parseStart(s: string): Date {
+  const iso = s.includes("T") ? s : s.replace(" ", "T");
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? new Date(s) : d;
+}
+function useCountdown(start: string) {
+  const target = useMemo(() => parseStart(start).getTime(), [start]);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const diffMs = target - now;
+  const expired = diffMs <= 0;
+  if (expired) return { expired: true, label: "หมดเวลา" };
+
+  const totalSec = Math.floor(diffMs / 1000);
+  const hh = Math.floor(totalSec / 3600);
+  const mm = Math.floor((totalSec % 3600) / 60);
+  const ss = totalSec % 60;
+
+  let label = "";
+  if (hh > 0) label = `เหลือ ${hh} ชม. ${pad2(mm)} นาที ${pad2(ss)} วินาที`;
+  else if (mm > 0) label = `เหลือ ${mm} นาที ${pad2(ss)} วินาที`;
+  else label = `เหลือ ${ss} วินาที`;
+
+  return { expired: false, label };
+}
+
+// ------- Card -------
+function MyRoomCard({ room, onPress }: { room: MyRoom; onPress?: () => void }) {
+  const { label, expired } = useCountdown(room.start_time);
+  const cover = BOSS_IMAGES[room.boss] ?? FALLBACK;
+
+  const isFull = room.is_full ?? ((room.current_members ?? 0) >= room.max_members);
+  const statusBg =
+    room.status === "invited" ? "#2563EB" :
+    expired ? "#9CA3AF" :
+    isFull ? "#EF4444" :
+    room.status === "active" ? "#10B981" : "#111827";
+
+  const statusText =
+    room.status === "invited" ? "เชิญแล้ว" :
+    expired ? "หมดเวลา" :
+    isFull ? "เต็ม" :
+    room.status === "active" ? "เปิดรับ" : room.status;
+
+  return (
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
+      <Image source={{ uri: cover }} style={styles.thumb} />
+      <View style={{ flex: 1 }}>
+        <View style={styles.topRow}>
+          <Text numberOfLines={1} style={styles.title}>{room.boss}</Text>
+          <View style={[styles.badge, { backgroundColor: statusBg }]}>
+            <Text style={styles.badgeText}>{statusText}</Text>
+          </View>
+        </View>
+
+        {/* owner (ถ้ามี) */}
+        {room.owner?.username ? (
+          <Text numberOfLines={1} style={styles.subtle}>หัวห้อง: {room.owner.username}</Text>
+        ) : null}
+
+        {/* countdown */}
+        <View style={styles.metaRow}>
+          <View style={styles.chipDark}>
+            <Ionicons name="time-outline" size={14} color="#fff" style={{ marginRight: 4 }} />
+            <Text style={styles.chipDarkText}>{label}</Text>
+          </View>
+
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Ionicons name="people-outline" size={16} color="#374151" />
+            <Text style={styles.metaText}>
+              {" "}{room.current_members ?? "-"} / {room.max_members}
+            </Text>
+          </View>
+        </View>
+
+        {/* note (ถ้ามี) */}
+        {room.note ? (
+          <Text numberOfLines={2} style={styles.note}>{room.note}</Text>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ------- Screen -------
 export default function MyRaid() {
-  const [rooms, setRooms] = useState<RaidRoom[]>([]);
+  const [rooms, setRooms] = useState<MyRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+  const me = useAuth((s) => s.user);
 
-  const normalize = (payload: any): RaidRoom[] => {
-    // รองรับทั้ง data.items และ data.rooms
-    const list = payload?.items ?? payload?.rooms ?? [];
-    return Array.isArray(list) ? list : [];
-  };
-
-  const load = async () => {
+  const load = useCallback(async () => {
+    setRefreshing(true);
     try {
-      setLoading(true);
-      // ถ้าฝั่ง PHP รองรับ filter: /my_rooms.php?status=active&page=1&limit=50
-      const { data } = await api.get("/api/raid/my_rooms.php");
+      const { data } = await api.get("/api/raid/my_rooms.php", { validateStatus: () => true });
       if (data?.success) {
-        setRooms(navigateTimeSafe(normalize(data.data)));
-      } else {
-        setRooms([]);
+        const arr: MyRoom[] = data.data?.rooms || data.data?.items || [];
+        setRooms(arr);
       }
-    } catch (e) {
-      console.error("Load my raids error", e);
-      setRooms([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const onRefresh = useCallback(async () => {
-    try {
-      setRefreshing(true);
-      const { data } = await api.get("/api/raid/my_rooms.php");
-      if (data?.success) {
-        setRooms(navigateTimeSafe(normalize(data.data)));
-      }
-    } catch (e) {
-      console.error("Refresh my raids error", e);
-    } finally {
       setRefreshing(false);
     }
   }, []);
 
-  // helper: (ถ้าต้องการแค่โชว์เวลาแบบสั้นใน list—ตัวอย่างนี้เราเก็บเดิมไว้)
-  const formatDateTime = (s: string) => {
-    const d = new Date(s.replace(" ", "T")); // เผื่อสตริงเป็น "YYYY-MM-DD HH:mm:ss"
-    if (isNaN(d.getTime())) return s;
-    return d.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
-  };
+  useEffect(() => { load(); }, [load]);
 
-  // เผื่ออยากแปลงเวลาไว้ล่วงหน้า (ไม่จำเป็น แต่ทำให้ง่ายตอน render)
-  function navigateTimeSafe(arr: RaidRoom[]): RaidRoom[] {
-    return arr.map((r) => ({ ...r, start_time: r.start_time }));
-  }
+  const { created, joined } = useMemo(() => {
+    const isCreated = (r: MyRoom) =>
+      r.role === "owner" || (!!me?.id && r.owner_id === me.id);
 
-  useEffect(() => {
-    load();
-  }, []);
+    const createdList = rooms.filter(isCreated);
+    const joinedList  = rooms.filter((r) => !isCreated(r));
 
-  if (loading) {
+    // เรียงเวลาใกล้เริ่มก่อน
+    const byTimeAsc = (a: MyRoom, b: MyRoom) =>
+      parseStart(a.start_time).getTime() - parseStart(b.start_time).getTime();
+
+    return {
+      created: [...createdList].sort(byTimeAsc),
+      joined:  [...joinedList].sort(byTimeAsc),
+    };
+  }, [rooms, me?.id]);
+
+  if (loading && !rooms.length) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#2f6fed" />
-        <Text style={{ marginTop: 8 }}>กำลังโหลดห้องของฉัน...</Text>
+      <View style={{ flex:1, justifyContent:"center", alignItems:"center" }}>
+        <Ionicons name="sync" size={20} />
+        <Text style={{ marginTop:8 }}>กำลังโหลดห้องของฉัน...</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, padding: 16 }}>
-      <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
-        ห้อง Raid ของฉัน
-      </Text>
+    <FlatList
+      style={{ flex: 1, backgroundColor: "#F9FAFB" }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+      data={[{ type: "created" }, { type: "joined" }]}
+      keyExtractor={(it) => it.type}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
+      renderItem={({ item }) => {
+        const isCreatedSection = item.type === "created";
+        const data = isCreatedSection ? created : joined;
+        return (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>
+                {isCreatedSection ? "ห้องที่ฉันสร้าง" : "ห้องที่ฉันเข้าร่วม"}
+              </Text>
+            </View>
 
-      <FlatList
-        data={rooms}
-        keyExtractor={(item) => String(item.id)}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={
-          <Text style={{ color: "#999" }}>ยังไม่มีห้องที่คุณเข้าร่วมหรือสร้างเอง</Text>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => router.push(`/rooms/${item.id}`)}
-            style={{
-              backgroundColor: "#fff",
-              padding: 16,
-              borderRadius: 12,
-              marginBottom: 12,
-              shadowColor: "#000",
-              shadowOpacity: 0.05,
-              shadowRadius: 6,
-              elevation: 2,
-            }}
-          >
-            <Text style={{ fontSize: 18, fontWeight: "600" }}>{item.boss}</Text>
-            <Text style={{ color: "#666", marginTop: 4 }}>
-              {formatDateTime(item.start_time)}
-            </Text>
-            <Text style={{ color: "#444", marginTop: 4 }}>
-              สมาชิก {item.current_members}/{item.max_members} • สถานะ: {item.status}
-              {item.is_owner ? " • เจ้าของห้อง" : ""}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
-    </View>
+            {data.length === 0 ? (
+              <Text style={{ color: "#9CA3AF", paddingVertical: 8 }}>
+                {isCreatedSection ? "ยังไม่มีห้องที่คุณสร้าง" : "ยังไม่มีห้องที่คุณเข้าร่วม"}
+              </Text>
+            ) : (
+              data.map((r) => (
+                <MyRoomCard
+                  key={r.id}
+                  room={r}
+                  onPress={() => router.push(`/rooms/${r.id}`)}
+                />
+              ))
+            )}
+          </View>
+        );
+      }}
+    />
   );
 }
+
+// ------- styles -------
+const styles = StyleSheet.create({
+  section: {
+    marginBottom: 16,
+  },
+  sectionHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  sectionTitle: { flex: 1, fontSize: 16, fontWeight: "800", color: "#111827" },
+  sectionCount: {
+    backgroundColor: "#000000ff",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  sectionCountText: { color: "#fff", fontWeight: "800", fontSize: 12 },
+
+  card: {
+    flexDirection: "row",
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: 12,
+  },
+  thumb: { width: 72, height: 72, borderRadius: 10, backgroundColor: "#F3F4F6" },
+  topRow: { flexDirection: "row", alignItems: "center" },
+  title: { flex: 1, fontSize: 16, fontWeight: "800", color: "#111827", marginRight: 8 },
+
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, alignSelf: "flex-start" },
+  badgeText: { color: "#fff", fontWeight: "800", fontSize: 12 },
+
+  subtle: { marginTop: 2, color: "#6B7280", fontSize: 12 },
+
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8, justifyContent: "space-between" },
+  metaText: { color: "#374151", fontSize: 12 },
+
+  chipDark: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "#111827",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  chipDarkText: { color: "#fff", fontWeight: "700", fontSize: 12 },
+
+  note: { marginTop: 6, color: "#4B5563", fontSize: 12 },
+});

@@ -11,12 +11,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $db = pdo();
 
 // ----- พารามิเตอร์ -----
-$boss      = trim($_GET['boss'] ?? '');
-$status    = trim($_GET['status'] ?? 'active'); // active|closed|canceled (default active)
-$timeFrom  = trim($_GET['time_from'] ?? '');    // "YYYY-MM-DD HH:MM:SS"
-$timeTo    = trim($_GET['time_to'] ?? '');
-$isAll     = (int)($_GET['all'] ?? 0) === 1;    // ดึงทั้งหมด (ภายใต้ filter)
-$HARD_CAP  = 5000; // กัน payload ใหญ่เกินไป (ปรับได้)
+$boss            = trim($_GET['boss'] ?? '');
+$status          = trim($_GET['status'] ?? 'active'); // active|closed|canceled (default active)
+$timeFrom        = trim($_GET['time_from'] ?? '');    // "YYYY-MM-DD HH:MM:SS"
+$timeTo          = trim($_GET['time_to'] ?? '');
+$excludeExpired  = (int)($_GET['exclude_expired'] ?? 1) === 1; // ✅ ค่าเริ่มต้น: ซ่อนห้องหมดเวลา
+$isAll           = (int)($_GET['all'] ?? 0) === 1;    // ดึงทั้งหมด (ภายใต้ filter)
+$HARD_CAP        = 5000;
 
 // paginate ปกติ
 [$page, $limit, $offset] = paginateParams();
@@ -42,6 +43,13 @@ if ($timeTo !== '' && strtotime($timeTo) !== false) {
   $params[':to'] = $timeTo;
 }
 
+// ✅ กรองเฉพาะห้องที่ "ยังไม่หมดเวลา" (start_time > ตอนนี้)
+// ใช้ค่าเวลา "ตอนนี้" จาก PHP เพื่อให้ตรง timezone ที่ตั้งไว้ใน helpers.php
+if ($excludeExpired) {
+  $cond[] = 'r.start_time > :now';
+  $params[':now'] = now(); // e.g. "2025-08-29 13:45:00"
+}
+
 $where = $cond ? ('WHERE ' . implode(' AND ', $cond)) : '';
 
 // ----- นับทั้งหมด -----
@@ -60,7 +68,7 @@ $sql = "
   ORDER BY r.start_time DESC, r.id ASC
 ";
 
-// ถ้า all=1 จะดึง “ทุกห้องที่ตรง filter” แต่ป้องกันล้นด้วย HARD_CAP
+// โหมด all=1
 if ($isAll) {
   $fetchLimit = min($total, $HARD_CAP);
   $sql .= " LIMIT :limit_all";
@@ -77,12 +85,12 @@ if ($isAll) {
     'total'        => $total,
     'total_pages'  => 1,
     'returned'     => count($rows),
-    'truncated'    => $total > $HARD_CAP, // true = ถูกตัดให้ไม่เกิน HARD_CAP
+    'truncated'    => $total > $HARD_CAP,
   ], 'ดึงรายการห้อง (all=1) สำเร็จ');
   exit;
 }
 
-// โหมดปกติ: มี LIMIT/OFFSET
+// โหมดปกติ: LIMIT/OFFSET
 $sql .= " LIMIT :limit OFFSET :offset";
 $stmt = $db->prepare($sql);
 foreach ($params as $k => $v) $stmt->bindValue($k, $v);

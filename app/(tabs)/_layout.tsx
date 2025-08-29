@@ -3,7 +3,10 @@ import { Ionicons } from "@expo/vector-icons";
 
 export default function TabsLayout() {
   return (
-    <Tabs screenOptions={{ headerShown: true }}>
+    <Tabs screenOptions={{ 
+      headerShown: true,
+      headerTitleStyle: { fontSize: 20, fontWeight: "800", marginBottom: 8}, 
+      }}>
       <Tabs.Screen
         name="room_raid"
         options={{

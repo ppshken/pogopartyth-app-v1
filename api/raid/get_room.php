@@ -15,8 +15,6 @@ if ($roomId <= 0) {
 }
 
 // ----- อ่าน user_id จาก token แบบ OPTIONAL -----
-// ถ้ามี Authorization: Bearer ... จะตรวจและดึง user_id ออกมา
-// แต่ถ้าไม่มี ก็ยังเรียกดูข้อมูลห้องได้ตามปกติ
 $authedUserId = null;
 $hdr = function_exists('readAuthHeader') ? readAuthHeader() : ($_SERVER['HTTP_AUTHORIZATION'] ?? null);
 $token = null;
@@ -34,11 +32,12 @@ if ($token) {
 
 $db = pdo();
 
-// ดึงรายละเอียดห้อง + เจ้าของ
+// ดึงรายละเอียดห้อง + เจ้าของ (✅ เพิ่ม friend_code ของเจ้าของ)
 $stmt = $db->prepare("
   SELECT
     r.id, r.boss, r.start_time, r.max_members, r.status, r.owner_id, r.note, r.created_at,
     u.username AS owner_username,
+    u.friend_code AS owner_friend_code,
     u.avatar   AS owner_avatar
   FROM raid_rooms r
   JOIN users u ON u.id = r.owner_id
@@ -46,7 +45,7 @@ $stmt = $db->prepare("
   LIMIT 1
 ");
 $stmt->execute([':id' => $roomId]);
-$room = $stmt->fetch();
+$room = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$room) {
   jsonResponse(false, null, 'ไม่พบห้อง', 404);
@@ -58,21 +57,22 @@ $qCount->execute([':rid' => $roomId]);
 $currentMembers = (int)$qCount->fetchColumn();
 $isFull = $currentMembers >= (int)$room['max_members'];
 
-// รายชื่อสมาชิกในห้อง
+// รายชื่อสมาชิกในห้อง (✅ เพิ่ม friend_code ของสมาชิกด้วย เผื่ออยากใช้)
 $qMembers = $db->prepare("
   SELECT
     ur.user_id,
     ur.role,
     ur.joined_at,
     uu.username,
-    uu.avatar
+    uu.avatar,
+    uu.friend_code AS friend_code
   FROM user_raid_rooms ur
   JOIN users uu ON uu.id = ur.user_id
   WHERE ur.room_id = :rid
   ORDER BY (ur.role = 'owner') DESC, ur.joined_at ASC
 ");
 $qMembers->execute([':rid' => $roomId]);
-$members = $qMembers->fetchAll();
+$members = $qMembers->fetchAll(PDO::FETCH_ASSOC);
 
 // สถานะของผู้เรียกดู (ถ้ามี token)
 $you = null;
@@ -100,15 +100,16 @@ jsonResponse(true, [
     'max_members'     => (int)$room['max_members'],
     'status'          => $room['status'],
     'owner'           => [
-      'id'       => (int)$room['owner_id'],
-      'username' => $room['owner_username'],
-      'avatar'   => $room['owner_avatar'],
+      'id'          => (int)$room['owner_id'],
+      'username'    => $room['owner_username'],
+      'friend_code' => $room['owner_friend_code'],
+      'avatar'      => $room['owner_avatar'],
     ],
     'note'            => $room['note'],
     'created_at'      => $room['created_at'],
     'current_members' => $currentMembers,
     'is_full'         => $isFull,
   ],
-  'members' => $members,
-  'you'     => $you, // null ถ้าไม่ได้ส่ง token มา
+  'members' => $members,  // ตอนนี้สมาชิกแต่ละคนมี friend_code ด้วยแล้ว
+  'you'     => $you,      // null ถ้าไม่ได้ส่ง token มา
 ], 'โหลดรายละเอียดห้องสำเร็จ');

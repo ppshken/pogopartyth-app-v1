@@ -54,7 +54,7 @@ try {
   $antiSpam->execute([':owner' => $userId]);
   if ($antiSpam->fetch()) {
     $db->rollBack();
-    jsonResponse(false, null, 'โปรดลองใหม่อีกครั้งในอีกสักครู่ (กันสแปม)', 429);
+    jsonResponse(false, null, 'คุณสร้างห้องถี่เกินไป ลองใหม่อีกครั้งภายใน 2 นาที', 429);
   }
 
   // ถ้ามี boss_id และคุณต้องการ map เป็นชื่อบอสจากตาราง boss

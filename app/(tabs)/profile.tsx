@@ -1,122 +1,237 @@
-import React from "react";
-import { View, Text, TouchableOpacity, Image, ActivityIndicator } from "react-native";
-import { useAuth } from "../../store/authStore";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
+import { useAuth } from "../../store/authStore";
+import { profile } from "../../lib/auth"; // ⬅️ API โปรไฟล์ (อยู่ด้านล่างคำตอบ)
+// ถ้า avatar ใน DB เป็น path ไม่ขึ้นต้น http ให้ต่อ BASE_URL เอง
+const BASE_URL = "http://<YOUR-HOST>/pogopartyth_api/api"; // แก้ให้ตรงของคุณ
 
+type FullUser = {
+  id: number;
+  email: string;
+  username: string;
+  avatar?: string | null;
+  friend_code?: string | null;
+  trainer_name?: string | null;
+  created_at?: string | null;
+};
 
 export default function Profile() {
-  const user = useAuth((s) => s.user);
-  const clear = useAuth((s) => s.clear);
   const router = useRouter();
-  const [loading, setLoading] = React.useState(false);
+  const authUser = useAuth((s) => s.user) as any;     // user จาก store (อาจยังไม่มี field เสริม)
+  const logout = useAuth((s) => s.clear);
+
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [user, setUser] = useState<FullUser | null>(null);
+
+  const load = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const u = await profile(); // GET /api/auth/profile.php
+      setUser(u as FullUser);
+    } catch (e: any) {
+      // ถ้าเรียกไม่สำเร็จ fallback ใช้ user ใน store ไปก่อน
+      setUser(authUser || null);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [authUser]);
+
+  useEffect(() => {
+    // เริ่มจากข้อมูลใน store ก่อน ให้ UI ไม่ว่างเปล่า
+    setUser(authUser || null);
+    // แล้วค่อยรีเฟรชจาก API
+    load();
+  }, [authUser, load]);
+
+  const onCopyFriendCode = async () => {
+    if (!user?.friend_code) {
+      Alert.alert("ไม่พบรหัส", "ยังไม่ได้ตั้ง Friend Code");
+      return;
+    }
+    await Clipboard.setStringAsync(user.friend_code);
+    Alert.alert("คัดลอกแล้ว", "คัดลอก Friend Code เรียบร้อย");
+  };
 
   const onLogout = async () => {
     setLoading(true);
-    setTimeout(async () => {
-      setLoading(false);
+    try {
+      await logout();
       router.replace("/(auth)/login");
-      await clear();
-    }, 1000);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // UI
   return (
-    <View style={{ flex: 1, backgroundColor: "#f9fafb", padding: 20 }}>
-      {/* Header */}
-      <Text style={{ fontSize: 26, fontWeight: "700", marginBottom: 20 }}>
-        โปรไฟล์ของฉัน
-      </Text>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: "#F9FAFB" }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
+    >
 
-      {/* User Card */}
-      <View
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: 16,
-          padding: 20,
-          alignItems: "center",
-          shadowColor: "#000",
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
-          elevation: 2,
-        }}
-      >
+      {/* Card: User */}
+      <View style={styles.card}>
         {/* Avatar */}
         {user?.avatar ? (
-          <Image
-            source={{ uri: user.avatar }}
-            style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 12 }}
-          />
+          <Image source={{ uri: user.avatar }} style={styles.avatar} />
         ) : (
-          <View
-            style={{
-              width: 100,
-              height: 100,
-              borderRadius: 50,
-              marginBottom: 12,
-              backgroundColor: "#e5e7eb",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 36, fontWeight: "700", color: "#374151" }}>
+          <View style={styles.avatarEmpty}>
+            <Text style={styles.avatarLetter}>
               {user?.username ? user.username.charAt(0).toUpperCase() : "?"}
             </Text>
           </View>
         )}
 
-        {/* Username */}
-        <Text style={{ fontSize: 20, fontWeight: "600", marginBottom: 4 }}>
-          {user?.username || "ไม่ระบุชื่อ"}
-        </Text>
-
-        {/* Email */}
-        <Text style={{ fontSize: 14, color: "#6b7280" }}>
-          {user?.email || "-"}
-        </Text>
-      </View>
-
-      {/* Info Section */}
-      <View
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: 16,
-          padding: 16,
-          marginTop: 20,
-          shadowColor: "#000",
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
-          elevation: 2,
-        }}
-      >
-        <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 8 }}>
-          ข้อมูลเพิ่มเติม
-        </Text>
-        <Text style={{ fontSize: 14, color: "#374151", marginBottom: 4 }}>
-          📌 Friend Code: {user?.friend_code || "-"}
-        </Text>
-        <Text style={{ fontSize: 14, color: "#374151" }}>
-          🕒 เข้าร่วมเมื่อ: {user?.created_at || "-"}
-        </Text>
-      </View>
-
-      {/* Logout Button */}
-      <TouchableOpacity
-        onPress={onLogout}
-        style={{
-          backgroundColor: "#ef4444",
-          padding: 14,
-          borderRadius: 12,
-          marginTop: 30,
-          alignItems: "center",
-        }}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
-            ออกจากระบบ
+        {/* Name + email */}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name} numberOfLines={1}>
+            {user?.username || "ไม่ระบุชื่อ"}
           </Text>
-        )}
-      </TouchableOpacity>
-    </View>
+          <Text style={styles.email} numberOfLines={1}>
+            {user?.email || "-"}
+          </Text>
+
+          {/* Chips / quick actions */}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8, justifyContent: "center" }}>
+            <View style={styles.badgeDark}>
+              <Ionicons name="calendar-outline" size={14} color="#fff" />
+              <Text style={styles.badgeDarkText}>
+                {" เข้าร่วมเมื่อ "}
+                {user?.created_at ? user.created_at : "—"}
+              </Text>
+            </View>
+            {user?.trainer_name ? (
+              <View style={styles.badgeMuted}>
+                <Ionicons name="ribbon-outline" size={14} color="#111827" />
+                <Text style={styles.badgeMutedText}>{"  "}{user.trainer_name}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </View>
+
+      {/* Card: More info */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>ข้อมูลเพิ่มเติม</Text>
+
+        {/* Friend Code */}
+        <View style={styles.row}>
+          <Ionicons name="qr-code-outline" size={18} color="#374151" />
+          <Text style={styles.rowText}>Friend Code</Text>
+          <View style={{ flex: 1 }} />
+          <Text style={styles.rowValue}>{user?.friend_code || "-"}</Text>
+        </View>
+
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+          <TouchableOpacity style={styles.outlineBtn} onPress={onCopyFriendCode}>
+            <Ionicons name="copy-outline" size={16} color="#111827" />
+            <Text style={styles.outlineBtnText}>คัดลอก Friend Code</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.outlineBtn}
+            onPress={() => router.push("/my_raid")}
+          >
+            <Ionicons name="albums-outline" size={16} color="#111827" />
+            <Text style={styles.outlineBtnText}>ห้องของฉัน</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Actions */}
+      <View style={{ marginTop: 8 }}>
+        <TouchableOpacity
+          style={[styles.primaryBtn, { backgroundColor: "#111827" }]}
+          onPress={() => router.push("/settings/profile-edit")} // สร้างหน้าแก้ไขภายหลังได้
+        >
+          <Ionicons name="create-outline" size={18} color="#fff" />
+          <Text style={styles.primaryBtnText}>แก้ไขโปรไฟล์</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.primaryBtn, { backgroundColor: "#EF4444" }]}
+          onPress={onLogout}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="log-out-outline" size={18} color="#fff" />
+              <Text style={styles.primaryBtnText}>ออกจากระบบ</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  screenTitle: { fontSize: 22, fontWeight: "800", color: "#111827", marginBottom: 12 },
+
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 16,
+    marginBottom: 12,
+  },
+
+  avatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 12, alignSelf: "center" },
+  avatarEmpty: {
+    width: 80, height: 80, borderRadius: 40, marginBottom: 12,
+    backgroundColor: "#E5E7EB", justifyContent: "center", alignItems: "center", alignSelf: "center",
+  },
+  avatarLetter: { fontSize: 28, fontWeight: "800", color: "#374151" },
+
+  name: { fontSize: 18, fontWeight: "800", color: "#111827", textAlign: "center" },
+  email: { fontSize: 13, color: "#6B7280", textAlign: "center", marginTop: 2 },
+
+  badgeDark: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#111827", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start",
+  },
+  badgeDarkText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+
+  badgeMuted: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start",
+  },
+  badgeMutedText: { color: "#111827", fontSize: 12, fontWeight: "700" },
+
+  cardTitle: { fontSize: 16, fontWeight: "800", color: "#111827", marginBottom: 8 },
+
+  row: { flexDirection: "row", alignItems: "center", paddingVertical: 6 },
+  rowText: { marginLeft: 8, color: "#374151", fontSize: 14 },
+  rowValue: { color: "#111827", fontWeight: "700", marginLeft: 8 },
+
+  outlineBtn: {
+    flex: 1, borderWidth: 1, borderColor: "#111827",
+    paddingVertical: 10, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8,
+    backgroundColor: "#fff",
+  },
+  outlineBtnText: { color: "#111827", fontWeight: "800" },
+
+  primaryBtn: {
+    marginTop: 10, paddingVertical: 12, borderRadius: 12,
+    alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8,
+  },
+  primaryBtnText: { color: "#fff", fontWeight: "800", marginLeft: 6 },
+});

@@ -16,7 +16,7 @@ $input  = getJsonInput();
 $roomId    = (int)($input['room_id'] ?? 0);
 $newStatus = strtolower(trim($input['status'] ?? ''));   // active|closed|canceled
 
-$allowed = ['active','closed','canceled'];
+$allowed = ['invited','active','closed','canceled'];
 if ($roomId <= 0 || !in_array($newStatus, $allowed, true)) {
   jsonResponse(false, null, 'room_id หรือ status ไม่ถูกต้อง (active|closed|canceled)', 422);
 }
