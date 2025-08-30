@@ -15,12 +15,30 @@ $boss            = trim($_GET['boss'] ?? '');
 $status          = trim($_GET['status'] ?? 'active'); // active|closed|canceled (default active)
 $timeFrom        = trim($_GET['time_from'] ?? '');    // "YYYY-MM-DD HH:MM:SS"
 $timeTo          = trim($_GET['time_to'] ?? '');
-$excludeExpired  = (int)($_GET['exclude_expired'] ?? 1) === 1; // ✅ ค่าเริ่มต้น: ซ่อนห้องหมดเวลา
-$isAll           = (int)($_GET['all'] ?? 0) === 1;    // ดึงทั้งหมด (ภายใต้ filter)
+$excludeExpired  = (int)($_GET['exclude_expired'] ?? 1) === 1; // ✅ ซ่อนห้องหมดเวลา (default)
+$excludeMine     = (int)($_GET['exclude_mine'] ?? 0) === 1;    // ✅ ใหม่: ไม่เอาห้องที่ฉันสร้าง
+$isAll           = (int)($_GET['all'] ?? 0) === 1;             // ดึงทั้งหมด (ภายใต้ filter)
 $HARD_CAP        = 5000;
 
 // paginate ปกติ
 [$page, $limit, $offset] = paginateParams();
+
+// ----- ถ้าขอ exclude_mine ต้องรู้ว่า "ฉัน" คือใคร (ต้องมี token) -----
+$meId = null;
+if ($excludeMine) {
+  $hdr = readAuthHeader();
+  $token = null;
+  if ($hdr && stripos($hdr, 'Bearer ') === 0) {
+    $token = trim(substr($hdr, 7));
+  } elseif (!empty($_GET['token'])) { // fallback debug เท่านั้น
+    $token = trim($_GET['token']);
+  }
+  $payload = $token ? verifyToken($token) : null;
+  if (!$payload || empty($payload['user_id'])) {
+    jsonResponse(false, null, 'Unauthorized (exclude_mine ต้องส่ง token)', 401);
+  }
+  $meId = (int)$payload['user_id'];
+}
 
 // ----- เงื่อนไขค้นหา -----
 $cond = [];
@@ -43,11 +61,16 @@ if ($timeTo !== '' && strtotime($timeTo) !== false) {
   $params[':to'] = $timeTo;
 }
 
-// ✅ กรองเฉพาะห้องที่ "ยังไม่หมดเวลา" (start_time > ตอนนี้)
-// ใช้ค่าเวลา "ตอนนี้" จาก PHP เพื่อให้ตรง timezone ที่ตั้งไว้ใน helpers.php
+// ✅ กรองเฉพาะห้องที่ "ยังไม่หมดเวลา"
 if ($excludeExpired) {
   $cond[] = 'r.start_time > :now';
-  $params[':now'] = now(); // e.g. "2025-08-29 13:45:00"
+  $params[':now'] = now();
+}
+
+// ✅ ใหม่: ตัดห้องที่ฉันเป็นเจ้าของออก
+if ($excludeMine && $meId !== null) {
+  $cond[] = 'r.owner_id <> :me';
+  $params[':me'] = $meId;
 }
 
 $where = $cond ? ('WHERE ' . implode(' AND ', $cond)) : '';

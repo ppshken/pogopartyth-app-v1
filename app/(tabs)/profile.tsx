@@ -109,7 +109,7 @@ export default function Profile() {
           {/* Chips / quick actions */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8, justifyContent: "center" }}>
             <View style={styles.badgeDark}>
-              <Ionicons name="calendar-outline" size={14} color="#fff" />
+              <Ionicons name="calendar-outline" size={14} />
               <Text style={styles.badgeDarkText}>
                 {" เข้าร่วมเมื่อ "}
                 {user?.created_at ? user.created_at : "—"}
@@ -177,6 +177,14 @@ export default function Profile() {
             </>
           )}
         </TouchableOpacity>
+        <View>
+          <Text style={{ color: "#9CA3AF", fontSize: 12, textAlign: "center", marginTop: 12 }}>
+            เวอร์ชัน 1.0.0
+          </Text>
+          <Text style={{ color: "#9CA3AF", fontSize: 12, textAlign: "center", marginTop: 4 }}>
+            สร้างโดย PogoParty TH
+          </Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -206,9 +214,9 @@ const styles = StyleSheet.create({
 
   badgeDark: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: "#111827", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start",
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start",
   },
-  badgeDarkText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  badgeDarkText: { fontSize: 12, fontWeight: "700" },
 
   badgeMuted: {
     flexDirection: "row", alignItems: "center",

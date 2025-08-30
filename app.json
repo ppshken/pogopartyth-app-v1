@@ -2,28 +2,21 @@
   "expo": {
     "name": "pogopartyth-app",
     "slug": "pogopartyth-app",
+    "scheme": "pogopartyth",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/pogopartyth.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    "plugins": ["expo-notifications"],
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.ppshken.pogopartyth",
+      "buildNumber": "1"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true
+      "package": "com.ppshken.pogopartyth",
+      "versionCode": 1
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "extra": {
+      "eas": { "projectId": "e6edfdf9-73e9-4a17-a5dc-efec2368ff56" }
     }
   }
 }

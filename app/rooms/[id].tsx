@@ -1,5 +1,5 @@
 // app/(tabs)/rooms/[id].tsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -21,8 +21,8 @@ import {
   leaveRoom,
   getFriendReadyStatus,
   setFriendReady,
-  updateStatus,   // ✅ ใช้เปลี่ยนสถานะ invited/closed
-  reviewRoom,     // ✅ ใช้รีวิวเมื่อสำเร็จ (สมาชิก) / ใส่เหตุผลเมื่อไม่สำเร็จ
+  updateStatus,   // invited / closed
+  reviewRoom,     // rating 1-5 + comment (ใช้ comment ใส่เหตุผลตอนไม่สำเร็จ)
 } from "../../lib/raid";
 
 type Member = {
@@ -40,6 +40,33 @@ type RoomOwner = {
   username: string;
   avatar?: string | null;
   friend_code?: string | null;
+};
+
+type RoomPayload = {
+  room: {
+    id: number;
+    boss: string;
+    start_time: string;
+    status: "active" | "closed" | "canceled" | "invited" | string;
+    current_members: number;
+    max_members: number;
+    is_full?: boolean;
+    note?: string | null;
+    owner: RoomOwner;
+  };
+  members: Member[];
+  you: {
+    user_id: number;
+    is_member: boolean;
+    is_owner: boolean;
+    role: "owner" | "member";
+  };
+  // ⬇️ ถ้าแบ็กเอนด์มีเมตารีวิว ให้ใช้ได้เลย (optional)
+  meta?: {
+    total_members?: number;
+    review_done_count?: number;
+    review_pending_count?: number;
+  };
 };
 
 const BOSS_IMAGES: Record<string, string> = {
@@ -91,49 +118,94 @@ function useCountdown(start: string) {
 }
 
 export default function RoomDetail() {
+  // ⬇️ hooks ทั้งหมด “บนสุด” ของคอมโพเนนต์
   const { id } = useLocalSearchParams<{ id: string }>();
   const roomId = Number(id);
   const router = useRouter();
 
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<RoomPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // สถานะ “เพิ่มเพื่อนแล้ว”
   const [friendAdded, setFriendAdded] = useState<Record<number, boolean>>({});
 
-  // โมดัลผลลัพธ์หลังตีบอส
-  const [resultModal, setResultModal] = useState(false);      // เลือก สำเร็จ/ไม่สำเร็จ
-  const [ratingModal, setRatingModal] = useState(false);      // ให้คะแนน 1-5 (สมาชิก)
-  const [failureModal, setFailureModal] = useState(false);    // กรอกเหตุผลไม่สำเร็จ
+  // โมดัลผลลัพธ์/รีวิว
+  const [resultModal, setResultModal] = useState(false);   // เลือก สำเร็จ/ไม่สำเร็จ
+  const [ratingModal, setRatingModal] = useState(false);   // ให้คะแนน 1-5
+  const [failureModal, setFailureModal] = useState(false); // กรอกเหตุผลไม่สำเร็จ
   const [rating, setRating] = useState<number>(5);
   const [failReason, setFailReason] = useState("");
 
-  const load = async () => {
-    const res = await getRoom(roomId);
-    setData(res);
+  // ป้องกันสั่งปิดห้องซ้ำ
+  const closingRef = useRef(false);
 
+  // โหลดข้อมูลห้อง
+  const load = useCallback(async () => {
+    const res = await getRoom(roomId);
+    setData(res as RoomPayload);
+
+    // โหลด ready-status ของเพื่อนเฉพาะตอนเราเป็นสมาชิก
     if (res?.you?.is_member) {
       try {
         const st = await getFriendReadyStatus(roomId);
         const map: Record<number, boolean> = {};
-        st.members.forEach((m: Member) => {
+        (st.members as Member[]).forEach((m) => {
           if (m.role !== "owner") map[m.user_id] = !!m.friend_ready;
         });
         setFriendAdded(map);
-      } catch {}
+      } catch {
+        // เงียบไว้ได้
+      }
     } else {
       setFriendAdded({});
     }
-  };
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
 
+  // เริ่มโหลดครั้งแรก
+  useEffect(() => { load(); }, [load]);
+
+  // โพลลิ่งทุก 3 วินาที (รีเฟรชหน้าจออัตโนมัติ)
+  useEffect(() => {
+    const t = setInterval(() => load(), 3000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  // เคาน์ดาวน์: ต้องเรียกทุกครั้ง (ใส่ fallback เมื่อ data ยังไม่มา)
   const startForCountdown =
     data?.room?.start_time ?? toYmdHms(new Date(Date.now() + 60_000));
   const { label: countdownLabel, expired } = useCountdown(startForCountdown);
 
+  // ถ้ามีเมตารีวิวครบแล้ว (หลังเชิญ) → ปิดห้องอัตโนมัติ (ฝั่ง server ควรตรวจให้ชัวร์ด้วย)
+  useEffect(() => {
+    if (!data) return;
+    if (data.room.status !== "invited") return;
+
+    const total =
+      data.meta?.total_members ?? (data.members?.length ?? 0);
+    const done =
+      data.meta?.review_done_count ??
+      (typeof data.meta?.review_pending_count === "number"
+        ? total - (data.meta!.review_pending_count as number)
+        : 0);
+
+    if (total > 0 && done >= total && !closingRef.current) {
+      closingRef.current = true;
+      (async () => {
+        try {
+          await updateStatus(data.room.id, "closed");
+          await load();
+          Alert.alert("ปิดห้องแล้ว", "รีวิวครบทุกคน ระบบปิดห้องให้เรียบร้อย");
+        } catch {
+          // ถ้าเซิร์ฟเวอร์ยังไม่พร้อม/ไม่ยอมปิด ก็ไม่ลูปซ้ำ
+        } finally {
+          closingRef.current = false;
+        }
+      })();
+    }
+  }, [data, load]);
+
+  // ก่อนมี data
   if (!data) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
@@ -142,31 +214,32 @@ export default function RoomDetail() {
     );
   }
 
-  const { room, you } = data as {
-    room: {
-      id: number;
-      boss: string;
-      start_time: string;
-      status: "active" | "closed" | "canceled" | "invited" | string;
-      current_members: number;
-      max_members: number;
-      is_full?: boolean;
-      note?: string | null;
-      owner: RoomOwner;
-    };
-    members: Member[];
-    you: {
-      user_id: number;
-      is_member: boolean;
-      is_owner: boolean;
-      role: "owner" | "member";
-    };
-  };
-
+  // --- ตัวแปรช่วย ---
+  const { room, you } = data;
   const isMember = you?.is_member;
   const isOwner = you?.is_owner;
   const cover = BOSS_IMAGES[room.boss] ?? FALLBACK;
 
+  const members = data.members;
+  const nonOwnerMembers = members.filter((m) => m.role !== "owner");
+  const allAdded =
+    nonOwnerMembers.length > 0 &&
+    nonOwnerMembers.every((m) => friendAdded[m.user_id]);
+
+  // สี/ข้อความสถานะ
+  const statusBg =
+    room.status === "invited" ? "#2563EB" :
+    expired ? "#9CA3AF" :
+    room.is_full || room.current_members >= room.max_members ? "#EF4444" :
+    room.status === "active" ? "#10B981" : "#111827";
+
+  const statusText =
+    room.status === "invited" ? "เชิญแล้ว" :
+    expired ? "หมดเวลา" :
+    room.is_full || room.current_members >= room.max_members ? "เต็ม" :
+    room.status === "active" ? "เปิดรับ" : room.status;
+
+  // --- handlers ---
   const onJoinLeave = async () => {
     try {
       setLoading(true);
@@ -182,7 +255,7 @@ export default function RoomDetail() {
 
   const copyUsernames = async () => {
     try {
-      const names = (data.members as Member[])
+      const names = members
         .filter((m) => m.role !== "owner")
         .map((m) => m.username || `User#${m.user_id}`);
       await Clipboard.setStringAsync(names.join(", "));
@@ -216,31 +289,12 @@ export default function RoomDetail() {
     }
   };
 
-  const members = data.members as Member[];
-  const nonOwnerMembers = members.filter((m) => m.role !== "owner");
-  const allAdded =
-    nonOwnerMembers.length > 0 &&
-    nonOwnerMembers.every((m) => friendAdded[m.user_id]);
-
-  // สี badge สถานะ
-  const statusBg =
-    room.status === "invited" ? "#2563EB" :
-    expired ? "#9CA3AF" :
-    room.is_full || room.current_members >= room.max_members ? "#EF4444" :
-    room.status === "active" ? "#10B981" : "#111827";
-
-  const statusText =
-    room.status === "invited" ? "เชิญแล้ว" :
-    expired ? "หมดเวลา" :
-    room.is_full || room.current_members >= room.max_members ? "เต็ม" :
-    room.status === "active" ? "เปิดรับ" : room.status;
-
-  // ✅ เชิญในเกม (Owner เท่านั้น และยังไม่ invited)
+  // เชิญในเกม → เปลี่ยนสถานะเป็น invited
   const onInvite = async () => {
     try {
       setLoading(true);
       await updateStatus(room.id, "invited");
-      Alert.alert("เชิญในเกมแล้ว", "ได้ส่งเชิญไปยังสมาชิกเรียบร้อย");
+      Alert.alert("เชิญในเกมแล้ว", "ได้ส่งเชิญไปยังสมาชิกเรียบร้อย — หลังจากนี้ทุกคนจะสามารถรีวิวได้");
       await load();
     } catch (e: any) {
       Alert.alert("เชิญไม่สำเร็จ", e.message || "เกิดข้อผิดพลาด");
@@ -249,40 +303,25 @@ export default function RoomDetail() {
     }
   };
 
-  // ✅ เปิด modal “ตีบอสเสร็จ”
+  // เปิด modal “ตีบอสเสร็จ”
   const onBattleFinished = () => setResultModal(true);
 
-  // ✅ เลือก “สำเร็จ”
-  const onResultSuccess = async () => {
+  // ผล “สำเร็จ” ⇒ ให้ทุกคนรีวิว (รวม Owner ด้วย)
+  const onResultSuccess = () => {
     setResultModal(false);
-    if (isOwner) {
-      try {
-        setLoading(true);
-        await updateStatus(room.id, "closed");
-        Alert.alert("สำเร็จ", "ปิดห้องเรียบร้อย");
-        await load();
-        router.replace("/room_raid");
-      } catch (e: any) {
-        Alert.alert("ผิดพลาด", e.message || "เกิดข้อผิดพลาด");
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      // สมาชิก → ให้คะแนน
-      setRating(5);
-      setRatingModal(true);
-    }
+    setRating(5);
+    setRatingModal(true);
   };
 
-  // ✅ ส่งคะแนนรีวิว (สมาชิก)
+  // ส่งคะแนนรีวิว (ทุกคน)
   const onSubmitRating = async () => {
     try {
       setLoading(true);
       await reviewRoom(room.id, rating, "Raid success");
       setRatingModal(false);
       Alert.alert("ขอบคุณ", "บันทึกรีวิวเรียบร้อย");
-      await load(); // รีเฟรช UI หลังส่ง
-      router.replace("/room_raid");
+      await load();
+      router.back();
     } catch (e: any) {
       Alert.alert("รีวิวไม่สำเร็จ", e.message || "เกิดข้อผิดพลาด");
     } finally {
@@ -290,25 +329,23 @@ export default function RoomDetail() {
     }
   };
 
-  // ✅ เลือก “ไม่สำเร็จ”
+  // ผล “ไม่สำเร็จ”
   const onResultFail = () => {
     setResultModal(false);
     setFailReason("");
     setFailureModal(true);
   };
 
-  // ✅ ส่งเหตุผลไม่สำเร็จ
+  // ส่งเหตุผลไม่สำเร็จ (ให้คะแนน 1 พร้อมเหตุผล)
   const onSubmitFailReason = async () => {
     if (!failReason.trim()) return Alert.alert("กรอกเหตุผล", "โปรดระบุสาเหตุที่ไม่สำเร็จ");
     try {
       setLoading(true);
-      // เก็บเป็นรีวิวเรต 1 พร้อมเหตุผล
       await reviewRoom(room.id, 1, `FAILED: ${failReason.trim()}`);
-      // ถ้าต้อง “ปิดห้องเมื่อไม่สำเร็จ (สำหรับ Owner)” ให้ uncomment ด้านล่าง:
-      // if (isOwner) { await updateStatus(room.id, "closed"); }
       setFailureModal(false);
       Alert.alert("บันทึกแล้ว", "บันทึกเหตุผลเรียบร้อย");
-      // await load(); // ถ้าต้องรีเฟรช UI หลังส่ง
+      await load();
+      router.back();
     } catch (e: any) {
       Alert.alert("บันทึกไม่สำเร็จ", e.message || "เกิดข้อผิดพลาด");
     } finally {
@@ -347,7 +384,7 @@ export default function RoomDetail() {
           {room.status === "invited" ? (
             <View style={[styles.noteBox, { backgroundColor: "#EFF6FF", borderColor: "#93C5FD", borderWidth: 1 }]}>
               <Text style={[styles.noteText, { color: "#1E3A8A", fontWeight: "700" }]}>
-                เชิญในเกมแล้ว — รอผลการตีบอส
+                เชิญในเกมแล้ว — โปรดรีวิวหลังจบการตีบอส
               </Text>
             </View>
           ) : room.note ? (
@@ -367,12 +404,16 @@ export default function RoomDetail() {
             {room.owner?.username || "-"} • Friend Code: {room.owner?.friend_code || "-"}
           </Text>
         </View>
+
+        {/* สมาชิก (ไม่ใช่เจ้าของ) -> คัดลอกรหัสหัวห้อง */}
         {isMember && !isOwner ? (
           <TouchableOpacity onPress={copyFriendCode} style={styles.outlineBtn}>
             <Ionicons name="copy-outline" size={16} color="#111827" />
             <Text style={styles.outlineBtnText}>คัดลอกรหัสหัวห้อง</Text>
           </TouchableOpacity>
         ) : null}
+
+        {/* เจ้าของ -> คัดลอกชื่อผู้เล่น */}
         {isOwner ? (
           <TouchableOpacity onPress={copyUsernames} style={styles.outlineBtn}>
             <Ionicons name="copy-outline" size={16} color="#111827" />
@@ -381,7 +422,7 @@ export default function RoomDetail() {
         ) : null}
       </View>
 
-      {/* รายชื่อผู้เข้าร่วม + ปุ่ม “เพิ่มเพื่อนแล้ว” */}
+      {/* รายชื่อผู้เข้าร่วม */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>ผู้เข้าร่วม</Text>
         {members.length ? (
@@ -390,6 +431,7 @@ export default function RoomDetail() {
             const iAmThisMember = m.user_id === data.you?.user_id;
             const canToggle = (!isOwnerRow && iAmThisMember) || (isOwner && !isOwnerRow);
             const added = friendAdded[m.user_id] || false;
+
             return (
               <View key={m.user_id} style={styles.memberItem}>
                 {m.avatar ? (
@@ -401,6 +443,7 @@ export default function RoomDetail() {
                     </Text>
                   </View>
                 )}
+
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: "700", color: "#111827" }} numberOfLines={1}>
                     {m.username || `User#${m.user_id}`}
@@ -410,6 +453,8 @@ export default function RoomDetail() {
                     {new Date(m.joined_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
                   </Text>
                 </View>
+
+                {/* ปุ่ม “เพิ่มเพื่อนแล้ว” */}
                 {!isOwnerRow && canToggle ? (
                   <TouchableOpacity
                     onPress={() => toggleFriend(m.user_id)}
@@ -424,7 +469,9 @@ export default function RoomDetail() {
                       color={added ? "#fff" : "#111827"}
                       style={{ marginRight: 6 }}
                     />
-                    <Text style={[styles.smallBtnText, added && { color: "#fff" }]}>เพิ่มเพื่อนแล้ว</Text>
+                    <Text style={[styles.smallBtnText, added && { color: "#fff" }]}>
+                      เพิ่มเพื่อนแล้ว
+                    </Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -435,33 +482,7 @@ export default function RoomDetail() {
         )}
       </View>
 
-      {/* คำอธิบายการใช้งาน */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>วิธีใช้</Text>
-        <View style={styles.bulletItem}>
-          <Text style={styles.bulletText}>
-            เจ้าของห้องสามารถเชิญในเกมได้เมื่อพร้อม (ปุ่ม "เชิญในเกม")
-          </Text>
-        </View>
-        <View style={styles.bulletItem}>
-          <Text style={styles.bulletText}>
-            สมาชิกที่เข้าร่วมแล้ว สามารถกด "เพิ่มเพื่อนแล้ว" เมื่อได้เพิ่มเพื่อนในเกมเรียบร้อย
-          </Text>
-        </View>
-        <View style={styles.bulletItem}>
-          <Text style={styles.bulletText}>
-            เมื่อเชิญในเกมแล้ว ให้สมาชิกทุกคนรอผลการตีบอส (เจ้าของห้องสามารถกด "ตีบอสเสร็จ" ได้) 
-            หากสำเร็จ สมาชิกจะให้คะแนนห้องได้ (1-5) และเจ้าของห้องจะปิดห้องได้
-          </Text>
-        </View>
-        <View style={styles.bulletItem}>
-          <Text style={styles.bulletText}>
-            หากไม่สำเร็จ สมาชิกสามารถระบุเหตุผลได้ (เจ้าของห้องสามารถปิดห้องได้)
-          </Text>
-        </View>
-      </View>
-
-      {/* ปุ่ม action zone */}
+      {/* ปุ่มการทำงาน */}
       <View style={{ marginTop: 8 }}>
         {isMember ? (
           <TouchableOpacity
@@ -481,15 +502,15 @@ export default function RoomDetail() {
           </TouchableOpacity>
         ) : null}
 
-        {/* หลังเชิญแล้ว → แสดงปุ่ม “ตีบอสเสร็จ” ให้สมาชิกทุกคน */}
-        {isMember && room.status === "invited" ? (
+        {/* หลังเชิญแล้ว → ทุกคนเห็นปุ่ม “ตีบอสเสร็จ กด” เพื่อรีวิว */}
+        {room.status === "invited" ? (
           <TouchableOpacity onPress={onBattleFinished} style={[styles.primaryBtn, { backgroundColor: "#10B981" }]}>
             <Ionicons name="flag-outline" size={18} color="#fff" />
-            <Text style={styles.primaryBtnText}>ตีบอสเสร็จ กด</Text>
+            <Text style={styles.primaryBtnText}>ตีบอสเสร็จ กด (รีวิว)</Text>
           </TouchableOpacity>
         ) : null}
 
-        {/* ปุ่มเข้าร่วมห้อง/ออกจากห้อง (ถ้าไม่ใช่ owner) */}
+        {/* เข้าร่วมห้อง/ออกจากห้อง (ซ่อนเมื่อ invited) */}
         {!isOwner && room.status !== "invited" ? (
           <TouchableOpacity
             onPress={onJoinLeave}
@@ -512,11 +533,11 @@ export default function RoomDetail() {
             <Text style={styles.modalTitle}>ผลการตีบอส</Text>
             <TouchableOpacity onPress={onResultSuccess} style={[styles.modalBtn, { backgroundColor: "#10B981" }]}>
               <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
-              <Text style={styles.modalBtnText}>สำเร็จ</Text>
+              <Text style={styles.modalBtnText}>สำเร็จ (ให้คะแนน)</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={onResultFail} style={[styles.modalBtn, { backgroundColor: "#EF4444" }]}>
               <Ionicons name="close-circle-outline" size={18} color="#fff" />
-              <Text style={styles.modalBtnText}>ไม่สำเร็จ</Text>
+              <Text style={styles.modalBtnText}>ไม่สำเร็จ (ใส่เหตุผล)</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setResultModal(false)} style={[styles.modalBtn, styles.modalCancel]}>
               <Text style={[styles.modalBtnText, { color: "#111827" }]}>ยกเลิก</Text>
@@ -525,7 +546,7 @@ export default function RoomDetail() {
         </View>
       </Modal>
 
-      {/* Modal: ให้คะแนน (สมาชิก) */}
+      {/* Modal: ให้คะแนน */}
       <Modal visible={ratingModal} transparent animationType="fade" onRequestClose={() => setRatingModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -646,7 +667,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: "#fff", fontWeight: "800", marginLeft: 8 },
 
-  // Modal styles
+  // Modal
   modalOverlay: {
     flex: 1, backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "center", alignItems: "center", padding: 16,
@@ -667,6 +688,4 @@ const styles = StyleSheet.create({
     minHeight: 90, borderWidth: 1, borderColor: "#E5E7EB",
     borderRadius: 12, padding: 12, color: "#111827", backgroundColor: "#F9FAFB",
   },
-  bulletItem: { flexDirection: "row", alignItems: "flex-start", marginBottom: 2  }, 
-  bulletText: { color: "#374151", fontSize: 14, marginLeft: 6 },
 });

@@ -204,15 +204,6 @@ export default function ProfileEdit() {
             </>
           )}
         </TouchableOpacity>
-
-        {/* ปุ่มยกเลิก */}
-        <TouchableOpacity
-          style={[styles.outlineBtn, { marginTop: 10 }]}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back-outline" size={16} color="#111827" />
-          <Text style={styles.outlineBtnText}>ย้อนกลับ</Text>
-        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );

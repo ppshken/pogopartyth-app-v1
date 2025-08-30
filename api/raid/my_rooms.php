@@ -12,37 +12,26 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $userId = authGuard();
 $db = pdo();
 
-// paginate ปกติ
+// paginate
 [$page, $limit, $offset] = paginateParams();
 
 /**
- * เงื่อนไขรวม:
- * - อยู่ในห้อง: ur.user_id = :uid
- * - เวลาเริ่มยังไม่ถึง: r.start_time > NOW()
- * - แยกตามบทบาท:
- *    - owner   : r.status <> 'closed'
- *    - member  : ยังไม่ได้รีวิวห้องนี้
+ * เลือกห้องที่ผู้ใช้ (owner หรือ member) ยัง "ไม่ได้รีวิว"
+ * - ur.user_id = :uid  → อยู่ในห้อง
+ * - NOT EXISTS รีวิวของผู้ใช้ในห้องนั้น → ยังไม่ได้รีวิว
+ * (ไม่กรองเวลา/สถานะ เพื่อให้เห็นห้องที่ต้องทำรีวิวแม้เวลาเลยแล้ว)
  */
 $params = [':uid' => $userId];
-
-$where = "
-  WHERE ur.user_id = :uid
-    AND r.start_time > NOW()
-    AND (
-      (ur.role = 'owner' AND r.status <> 'closed')
-      OR
-      (ur.role <> 'owner' AND NOT EXISTS (
-         SELECT 1 FROM raid_reviews rv
-         WHERE rv.room_id = r.id AND rv.user_id = :uid
-      ))
-    )
-";
 
 $countSql = "
   SELECT COUNT(*)
   FROM raid_rooms r
   JOIN user_raid_rooms ur ON ur.room_id = r.id
-  $where
+  WHERE ur.user_id = :uid
+    AND NOT EXISTS (
+      SELECT 1 FROM raid_reviews rv
+      WHERE rv.room_id = r.id AND rv.user_id = :uid
+    )
 ";
 $stmt = $db->prepare($countSql);
 $stmt->execute($params);
@@ -65,7 +54,11 @@ $sql = "
   FROM raid_rooms r
   JOIN user_raid_rooms ur ON ur.room_id = r.id
   JOIN users u ON u.id = r.owner_id
-  $where
+  WHERE ur.user_id = :uid
+    AND NOT EXISTS (
+      SELECT 1 FROM raid_reviews rv
+      WHERE rv.room_id = r.id AND rv.user_id = :uid
+    )
   ORDER BY r.start_time ASC, r.id ASC
   LIMIT :limit OFFSET :offset
 ";
@@ -77,7 +70,6 @@ $stmt->execute();
 
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// map ออกเป็นรูปแบบเดียวกับฝั่งแอปใช้
 $items = array_map(function(array $r) {
   $current = (int)$r['current_members'];
   $max     = (int)$r['max_members'];
@@ -106,4 +98,4 @@ jsonResponse(true, [
   'limit'       => $limit,
   'total'       => $total,
   'total_pages' => (int)ceil($total / $limit),
-], 'โหลดห้องของฉัน: ยังไม่หมดเวลา • owner=ยังไม่ปิด • member=ยังไม่รีวิว');
+], 'โหลดห้องที่ยังไม่ได้รีวิวสำเร็จ');

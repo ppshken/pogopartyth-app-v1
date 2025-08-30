@@ -2,7 +2,13 @@ import { api } from "./api";
 
 export async function listRooms(params: any) {
   const { data } = await api.get("/api/raid/list.php", {
-    params,
+  params: {
+    status: "active",
+    exclude_expired: 1, // คงไว้เพื่อซ่อนห้องหมดเวลา
+    exclude_mine: 1,    // ✅ ใหม่: ไม่เอาห้องที่ตัวเองสร้าง
+    page: 1,
+    limit: 50,
+  },
     validateStatus: () => true,
   });
   if (!data?.success) throw new Error(data?.message || "List rooms failed");

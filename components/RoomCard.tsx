@@ -15,10 +15,10 @@ type Room = {
 };
 
 const BOSS_IMAGES: Record<string, string> = {
-  Mewtwo: "https://img.pokemondb.net/artwork/large/mewtwo.jpg",
+  Mewtwo: "https://th.portal-pokemon.com/play/resources/pokedex/img/pm/ad7ffb53f984a6623c53f01cfbc06fc8565ecbd4.png",
   Groudon: "https://img.pokemondb.net/artwork/large/groudon.jpg",
   Kyogre: "https://img.pokemondb.net/artwork/large/kyogre.jpg",
-  Rayquaza: "https://img.pokemondb.net/artwork/large/rayquaza.jpg",
+  Rayquaza: "https://th.portal-pokemon.com/play/resources/pokedex/img/pm/f6a02199446c37509259046601ee6ac55542e97f.png",
 };
 const FALLBACK =
   "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=1200&auto=format&fit=crop";
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   countChip: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: 8,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   people: { flexDirection: "row", alignItems: "center" },
   metaText: { color: "#374151", fontSize: 16 },
 
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   statusText: { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 0.2 },
 
   note: { marginTop: 6, color: "#4B5563", fontSize: 14 },

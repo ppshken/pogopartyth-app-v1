@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { login } from "../../lib/auth";
 import { useAuth } from "../../store/authStore";
+import { registerPushToken } from "../../lib/push";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -40,6 +41,7 @@ export default function Login() {
         password: password.trim(),
       });
       await setAuth(user, token);
+      await registerPushToken().catch(() => {});
       router.replace("/room_raid"); // ปรับ path ให้ตรงโปรเจ็กต์คุณ
     } catch (e: any) {
       Alert.alert("Login failed", e.message || "Unknown error");
@@ -69,7 +71,6 @@ export default function Login() {
                   <Text style={styles.title}>PogoPartyTH</Text>
                 </View>
                 <View style={styles.lineRow}>
-                  <Ionicons name="information-circle-outline" size={16} color="#374151" />
                   <Text style={styles.lineText}>เข้าร่วมเรดได้ไว ใช้งานง่าย</Text>
                 </View>
               </View>

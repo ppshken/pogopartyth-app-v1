@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { useAuth } from "../../store/authStore";
+import { useRefetchOnFocus } from "../../hooks/useRefetchOnFocus";
 
 type MyRoom = {
   id: number;
@@ -51,6 +52,7 @@ function useCountdown(start: string) {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+  
 
   const diffMs = target - now;
   const expired = diffMs <= 0;
@@ -136,7 +138,6 @@ export default function MyRaid() {
   const me = useAuth((s) => s.user);
 
   const load = useCallback(async () => {
-    setRefreshing(true);
     try {
       const { data } = await api.get("/api/raid/my_rooms.php", { validateStatus: () => true });
       if (data?.success) {
@@ -145,11 +146,12 @@ export default function MyRaid() {
       }
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useRefetchOnFocus(load, [load]);
 
   const { created, joined } = useMemo(() => {
     const isCreated = (r: MyRoom) =>
@@ -255,7 +257,7 @@ const styles = StyleSheet.create({
   chipDark: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: 8,
     backgroundColor: "#111827",
     flexDirection: "row",
     alignItems: "center",

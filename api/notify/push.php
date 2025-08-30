@@ -24,8 +24,9 @@ if ($title === '' && $body === '') {
   jsonResponse(false, null, 'ต้องมีอย่างน้อย title หรือ body', 422);
 }
 
-// ---- utility ----
+// ---- utils ----
 function b64url(string $s): string { return rtrim(strtr(base64_encode($s), '+/', '-_'), '='); }
+
 function normalizeDataToString(array $arr): array {
   $out = [];
   foreach ($arr as $k => $v) {
@@ -37,17 +38,35 @@ function normalizeDataToString(array $arr): array {
   }
   return $out;
 }
-function httpPostJson(string $url, array $payload, array $headers = [], int $timeout = 15): array {
+
+function httpPostJson(string $url, $payload, array $headers = [], int $timeout = 15): array {
   $ch = curl_init($url);
   curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST           => true,
-    CURLOPT_HTTPHEADER     => array_merge(['Content-Type: application/json'], $headers),
-    CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+    CURLOPT_HTTPHEADER     => array_merge(['Content-Type: application/json', 'Accept: application/json'], $headers),
+    CURLOPT_POSTFIELDS     => is_string($payload) ? $payload : json_encode($payload, JSON_UNESCAPED_UNICODE),
     CURLOPT_TIMEOUT        => $timeout,
   ]);
-  $res = curl_exec($ch);
-  $err = curl_error($ch);
+  $res  = curl_exec($ch);
+  $err  = curl_error($ch);
+  $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  return ['status' => $code, 'body' => $res, 'error' => $err];
+}
+
+/** ใช้ส่ง application/x-www-form-urlencoded (จำเป็นสำหรับ Google OAuth token) */
+function httpPostForm(string $url, array $form, array $headers = [], int $timeout = 15): array {
+  $ch = curl_init($url);
+  curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST           => true,
+    CURLOPT_HTTPHEADER     => array_merge(['Content-Type: application/x-www-form-urlencoded'], $headers),
+    CURLOPT_POSTFIELDS     => http_build_query($form, '', '&'),
+    CURLOPT_TIMEOUT        => $timeout,
+  ]);
+  $res  = curl_exec($ch);
+  $err  = curl_error($ch);
   $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
   curl_close($ch);
   return ['status' => $code, 'body' => $res, 'error' => $err];
@@ -62,7 +81,7 @@ if (!empty($toUserIds)) {
   $in = implode(',', array_fill(0, count($toUserIds), '?'));
   $stmt = $db->prepare("SELECT id, device_token FROM users WHERE id IN ($in)");
   $stmt->execute($toUserIds);
-  while ($r = $stmt->fetch()) {
+  while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
     if (!empty($r['device_token'])) {
       if (!$excludeMe || (int)$r['id'] !== $callerId) {
         $tokens[] = $r['device_token'];
@@ -71,18 +90,13 @@ if (!empty($toUserIds)) {
   }
 }
 
-// จาก room id -> สมาชิกทั้งหมด
+// จาก room id -> สมาชิกทั้งหมด (เฉพาะเจ้าของห้องเท่านั้น)
 if ($toRoomId > 0) {
-  // เฉพาะเจ้าของห้องเท่านั้น
   $q = $db->prepare("SELECT owner_id FROM raid_rooms WHERE id = ?");
   $q->execute([$toRoomId]);
-  $room = $q->fetch();
-  if (!$room) {
-    jsonResponse(false, null, 'ไม่พบห้อง', 404);
-  }
-  if ((int)$room['owner_id'] !== $callerId) {
-    jsonResponse(false, null, 'ต้องเป็นเจ้าของห้องเท่านั้น', 403);
-  }
+  $room = $q->fetch(PDO::FETCH_ASSOC);
+  if (!$room) jsonResponse(false, null, 'ไม่พบห้อง', 404);
+  if ((int)$room['owner_id'] !== $callerId) jsonResponse(false, null, 'ต้องเป็นเจ้าของห้องเท่านั้น', 403);
 
   $stmt = $db->prepare("
     SELECT u.id, u.device_token
@@ -91,7 +105,7 @@ if ($toRoomId > 0) {
     WHERE ur.room_id = ?
   ");
   $stmt->execute([$toRoomId]);
-  while ($r = $stmt->fetch()) {
+  while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
     if (!empty($r['device_token'])) {
       if (!$excludeMe || (int)$r['id'] !== $callerId) {
         $tokens[] = $r['device_token'];
@@ -102,13 +116,13 @@ if ($toRoomId > 0) {
 
 // จาก tokens โดยตรง
 foreach ($toTokens as $t) {
-  if ($t !== '') $tokens[] = $t;
+  if (is_string($t) && trim($t) !== '') $tokens[] = $t;
 }
 
-// กรอง/ไม่ให้ว่าง/ไม่ซ้ำ
+// กรองซ้ำ/ว่าง
 $tokens = array_values(array_unique(array_filter($tokens, fn($t) => is_string($t) && trim($t) !== '')));
 if (empty($tokens)) {
-  jsonResponse(false, ['sent' => 0], 'ไม่พบ device_token ปลายทาง', 200);
+  jsonResponse(true, ['targets' => ['expo'=>0,'fcm'=>0], 'sent'=>['expo'=>0,'fcm'=>0], 'errors'=>[]], 'ไม่พบ device_token ปลายทาง', 200);
 }
 
 // แยก Expo vs FCM
@@ -122,39 +136,56 @@ foreach ($tokens as $tk) {
 $mode = strtolower(getenv('PUSH_MODE') ?: 'auto');
 $dataStr = normalizeDataToString($data);
 
-// ---- ส่งด้วย Expo (ถ้ามี) ----
+// ---- ส่งด้วย Expo ----
 $expoResults = [];
+$expoDelivered = 0; $expoFailed = 0;
+
 if (($mode === 'auto' || $mode === 'expo') && !empty($expoTokens)) {
   $expoUrl = getenv('EXPO_PUSH_URL') ?: 'https://exp.host/--/api/v2/push/send';
-  // chunk ละ <= 100
   $chunks = array_chunk($expoTokens, 100);
   foreach ($chunks as $chunk) {
     $messages = [];
     foreach ($chunk as $t) {
       $messages[] = [
-        'to' => $t,
+        'to'    => $t,
         'title' => $title ?: null,
         'body'  => $body  ?: null,
         'data'  => $dataStr,
-        // 'sound' => 'default',
-        // 'ttl'   => 300,
       ];
     }
     $resp = httpPostJson($expoUrl, $messages);
     $expoResults[] = $resp;
+
+    // พยายาม parse เพื่อนับผลจริงต่อ token (ไม่บังคับ)
+    if ($resp['status'] >= 200 && $resp['status'] < 300 && !empty($resp['body'])) {
+      $json = json_decode($resp['body'], true);
+      if (is_array($json)) {
+        // รูปแบบของ Expo: {"data":[{"status":"ok",...}, {"status":"error",...}, ...]}
+        $arr = $json['data'] ?? [];
+        if (is_array($arr)) {
+          foreach ($arr as $one) {
+            if (($one['status'] ?? '') === 'ok') $expoDelivered++; else $expoFailed++;
+          }
+        }
+      }
+    } else {
+      // ทั้งชุดล้มเหลว
+      $expoFailed += count($chunk);
+    }
   }
 }
 
-// ---- ส่งด้วย FCM (HTTP v1) (ถ้ามี) ----
+// ---- ส่งด้วย FCM HTTP v1 ----
 $fcmResults = [];
-if (($mode === 'auto' || $mode === 'fcm') && !empty($fcmTokens)) {
-  $projectId = getenv('FCM_PROJECT_ID') ?: '';
-  $saFile = getenv('FCM_SA_FILE') ?: '';
-  $clientEmail = getenv('FCM_CLIENT_EMAIL') ?: '';
-  $privateKey = getenv('FCM_PRIVATE_KEY') ?: '';
+$fcmDelivered = 0; $fcmFailed = 0;
 
-  // โหลดข้อมูล service account
-  $sa = null;
+if (($mode === 'auto' || $mode === 'fcm') && !empty($fcmTokens)) {
+  $projectId   = getenv('FCM_PROJECT_ID') ?: '';
+  $saFile      = getenv('FCM_SA_FILE') ?: '';
+  $clientEmail = getenv('FCM_CLIENT_EMAIL') ?: '';
+  $privateKey  = getenv('FCM_PRIVATE_KEY') ?: '';
+
+  // โหลด service account ไฟล์ (ถ้ามี)
   if ($saFile && file_exists($saFile)) {
     $sa = json_decode(file_get_contents($saFile), true);
     $clientEmail = $sa['client_email'] ?? $clientEmail;
@@ -162,14 +193,13 @@ if (($mode === 'auto' || $mode === 'fcm') && !empty($fcmTokens)) {
     if (!$projectId) $projectId = $sa['project_id'] ?? $projectId;
   }
   if ($privateKey !== '') {
-    // เผื่อกรณีใส่ใน ENV มี \n
     $privateKey = str_replace(["\\n"], "\n", $privateKey);
   }
 
   if (!$projectId || !$clientEmail || !$privateKey) {
     $fcmResults[] = ['status' => 0, 'body' => null, 'error' => 'FCM config not complete'];
   } else {
-    // ขอ access token ด้วย JWT
+    // สร้าง JWT เพื่อขอ access_token
     $now = time();
     $jwtHeader = b64url(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
     $jwtClaim  = b64url(json_encode([
@@ -187,12 +217,13 @@ if (($mode === 'auto' || $mode === 'fcm') && !empty($fcmTokens)) {
       $fcmResults[] = ['status' => 0, 'body' => null, 'error' => 'openssl_sign failed'];
     } else {
       $jwt = $jwtUnsigned . '.' . b64url($signature);
-      $tokenResp = httpPostJson('https://oauth2.googleapis.com/token', [
+
+      // ✅ ใช้ form-encoded ไม่ใช่ JSON
+      $tokenResp = httpPostForm('https://oauth2.googleapis.com/token', [
         'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
         'assertion'  => $jwt
-      ], ['Content-Type: application/x-www-form-urlencoded']); // Google ยอม JSON ได้ แต่เนทีฟคือ x-www-form-urlencoded
+      ]);
 
-      // แก้ header ให้ถูกต้องสำหรับ token request
       if ($tokenResp['status'] >= 400 || empty($tokenResp['body'])) {
         $fcmResults[] = ['status' => $tokenResp['status'], 'body' => $tokenResp['body'], 'error' => 'get access_token failed'];
       } else {
@@ -212,12 +243,12 @@ if (($mode === 'auto' || $mode === 'fcm') && !empty($fcmTokens)) {
                   'body'  => $body  ?: null
                 ],
                 'data' => $dataStr,
-                // 'android' => ['priority' => 'HIGH'],
-                // 'apns'    => ['headers' => ['apns-priority' => '10']]
               ]
             ];
             $resp = httpPostJson($fcmUrl, $payload, ["Authorization: Bearer {$accessToken}"]);
             $fcmResults[] = $resp;
+
+            if ($resp['status'] >= 200 && $resp['status'] < 300) $fcmDelivered++; else $fcmFailed++;
           }
         }
       }
@@ -225,22 +256,24 @@ if (($mode === 'auto' || $mode === 'fcm') && !empty($fcmTokens)) {
   }
 }
 
-// สรุปผล
-$sentExpo = 0; $sentFcm = 0; $errors = [];
-
+// สรุป
+$errors = [];
 foreach ($expoResults as $r) {
-  if (($r['status'] ?? 0) >= 200 && ($r['status'] ?? 0) < 300) $sentExpo++;
-  else $errors[] = ['provider' => 'expo', 'status' => $r['status'], 'error' => $r['error'], 'body' => $r['body']];
+  if (($r['status'] ?? 0) < 200 || ($r['status'] ?? 0) >= 300) {
+    $errors[] = ['provider' => 'expo', 'status' => $r['status'], 'error' => $r['error'], 'body' => $r['body']];
+  }
 }
 foreach ($fcmResults as $r) {
-  if (($r['status'] ?? 0) >= 200 && ($r['status'] ?? 0) < 300) $sentFcm++;
-  else $errors[] = ['provider' => 'fcm', 'status' => $r['status'], 'error' => $r['error'], 'body' => $r['body']];
+  if (($r['status'] ?? 0) < 200 || ($r['status'] ?? 0) >= 300) {
+    $errors[] = ['provider' => 'fcm', 'status' => $r['status'], 'error' => $r['error'], 'body' => $r['body']];
+  }
 }
 
 jsonResponse(true, [
-  'targets'     => ['expo' => count($expoTokens), 'fcm' => count($fcmTokens)],
-  'sent'        => ['expo' => $sentExpo, 'fcm' => $sentFcm],
-  'errors'      => $errors,
-  'mode'        => $mode,
+  'targets' => ['expo' => count($expoTokens), 'fcm' => count($fcmTokens)],
+  'sent'    => ['expo' => $expoDelivered, 'fcm' => $fcmDelivered],
+  'failed'  => ['expo' => $expoFailed, 'fcm' => $fcmFailed],
+  'errors'  => $errors,
+  'mode'    => $mode,
   'server_time' => now(),
 ], 'ส่งการแจ้งเตือนเรียบร้อย');

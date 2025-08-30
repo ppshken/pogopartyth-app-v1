@@ -288,7 +288,9 @@ export default function CreateRoom() {
                     style={[styles.listItem, selected && { backgroundColor: "#F3F4F6" }]}
                   >
                     <Text style={{ fontWeight: "700", color: "#111827" }}>{item.label}</Text>
-                    {selected ? <Text style={{ color: "#2563EB" }}>✓</Text> : null}
+                    {selected ? <Text style={{ color: "#2563EB" }}>
+                      <Ionicons name="checkmark" size={20} color="#111827" />
+                    </Text> : null}
                   </TouchableOpacity>
                 );
               }}
@@ -315,7 +317,9 @@ export default function CreateRoom() {
                   style={styles.listItem}
                 >
                   <Text style={{ fontWeight: "700", color: "#111827" }}>{item} คน</Text>
-                  {item === max ? <Text style={{ color: "#2563EB" }}>✓</Text> : null}
+                  {item === max ? <Text style={{ color: "#2563EB" }}>
+                    <Ionicons name="checkmark" size={20} color="#111827" />
+                  </Text> : null}
                 </TouchableOpacity>
               )}
               ItemSeparatorComponent={() => <View style={{ height: 6 }} />}

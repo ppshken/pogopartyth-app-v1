@@ -6,6 +6,12 @@ export default function TabsLayout() {
     <Tabs screenOptions={{ 
       headerShown: true,
       headerTitleStyle: { fontSize: 20, fontWeight: "800", marginBottom: 8}, 
+      tabBarActiveTintColor: "#000000ff",
+      tabBarInactiveTintColor: "#6b7280ff",
+      tabBarStyle: { paddingBottom: 8, height: 85, backgroundColor: "#f9fafb" },
+      tabBarLabelStyle: { fontSize: 12, fontWeight: "700", marginBottom: 4 },
+      tabBarHideOnKeyboard: true,
+      tabBarItemStyle: { marginTop: 6 },
       }}>
       <Tabs.Screen
         name="room_raid"
