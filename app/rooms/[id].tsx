@@ -11,6 +11,8 @@ import {
   RefreshControl,
   Modal,
   TextInput,
+  Platform,
+  StatusBar
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
@@ -24,6 +26,8 @@ import {
   updateStatus,   // invited / closed
   reviewRoom,     // rating 1-5 + comment (ใช้ comment ใส่เหตุผลตอนไม่สำเร็จ)
 } from "../../lib/raid";
+
+const topPad = Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) + 8 : 0;
 
 type Member = {
   user_id: number;
@@ -45,6 +49,8 @@ type RoomOwner = {
 type RoomPayload = {
   room: {
     id: number;
+    raid_boss_id: number;
+    pokemon_image: string;
     boss: string;
     start_time: string;
     status: "active" | "closed" | "canceled" | "invited" | string;
@@ -68,15 +74,6 @@ type RoomPayload = {
     review_pending_count?: number;
   };
 };
-
-const BOSS_IMAGES: Record<string, string> = {
-  Mewtwo: "https://img.pokemondb.net/artwork/large/mewtwo.jpg",
-  Groudon: "https://img.pokemondb.net/artwork/large/groudon.jpg",
-  Kyogre: "https://img.pokemondb.net/artwork/large/kyogre.jpg",
-  Rayquaza: "https://img.pokemondb.net/artwork/large/rayquaza.jpg",
-};
-const FALLBACK =
-  "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=1200&auto=format&fit=crop";
 
 const pad2 = (n: number) => n.toString().padStart(2, "0");
 const toYmdHms = (d: Date) =>
@@ -218,7 +215,6 @@ export default function RoomDetail() {
   const { room, you } = data;
   const isMember = you?.is_member;
   const isOwner = you?.is_owner;
-  const cover = BOSS_IMAGES[room.boss] ?? FALLBACK;
 
   const members = data.members;
   const nonOwnerMembers = members.filter((m) => m.role !== "owner");
@@ -361,7 +357,7 @@ export default function RoomDetail() {
     >
       {/* Header */}
       <View style={styles.headerCard}>
-        <Image source={{ uri: cover }} style={styles.cover} />
+        <Image source={{ uri: room.pokemon_image }} style={styles.cover} />
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={styles.title}>{room.boss}</Text>
@@ -400,9 +396,16 @@ export default function RoomDetail() {
         <Text style={styles.sectionTitle}>รหัสเพิ่มเพื่อนหัวห้อง</Text>
         <View style={styles.friendRow}>
           <Ionicons name="person-circle-outline" size={18} color="#374151" />
-          <Text style={styles.friendText}>
-            {room.owner?.username || "-"} • Friend Code: {room.owner?.friend_code || "-"}
-          </Text>
+          <View style={{flexDirection: "row"}}>
+            <Text style={styles.friendText}>
+              {room.owner?.username || "-"} • Friend Code: 
+            </Text>
+            {isMember ? (
+            <Text style={styles.friendText}>
+              {room.owner?.friend_code || "-"}
+            </Text>
+            ) : null}
+          </View>
         </View>
 
         {/* สมาชิก (ไม่ใช่เจ้าของ) -> คัดลอกรหัสหัวห้อง */}
@@ -414,7 +417,7 @@ export default function RoomDetail() {
         ) : null}
 
         {/* เจ้าของ -> คัดลอกชื่อผู้เล่น */}
-        {isOwner ? (
+        {isOwner && allAdded ? (
           <TouchableOpacity onPress={copyUsernames} style={styles.outlineBtn}>
             <Ionicons name="copy-outline" size={16} color="#111827" />
             <Text style={styles.outlineBtnText}>คัดลอกชื่อผู้เล่น</Text>
@@ -457,6 +460,7 @@ export default function RoomDetail() {
                 {/* ปุ่ม “เพิ่มเพื่อนแล้ว” */}
                 {!isOwnerRow && canToggle ? (
                   <TouchableOpacity
+                    disabled={!iAmThisMember}
                     onPress={() => toggleFriend(m.user_id)}
                     style={[
                       styles.smallBtn,

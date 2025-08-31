@@ -83,12 +83,27 @@ $total = (int)$stmt->fetchColumn();
 
 // ----- ดึงรายการ -----
 $sql = "
-  SELECT
-    r.id, r.boss, r.start_time, r.max_members, r.status, r.owner_id, r.note, r.created_at,
-    (SELECT COUNT(*) FROM user_raid_rooms ur WHERE ur.room_id = r.id) AS current_members
-  FROM raid_rooms r
-  $where
-  ORDER BY r.start_time DESC, r.id ASC
+SELECT
+  r.id,
+  r.boss,
+  r.raid_boss_id,
+  r.pokemon_image,
+  r.start_time,
+  r.max_members,
+  r.status,
+  r.owner_id,
+  r.note,
+  r.created_at,
+  u.username   AS owner_username,
+  u.avatar     AS owner_avatar,
+  u.friend_code AS owner_friend_code,
+  rb.pokemon_tier AS pokemon_tier,
+  (SELECT COUNT(*) FROM user_raid_rooms ur WHERE ur.room_id = r.id) AS current_members
+FROM raid_rooms r
+LEFT JOIN users u ON u.id = r.owner_id
+LEFT JOIN raid_boss rb ON rb.id = r.raid_boss_id
+$where
+ORDER BY r.start_time DESC, r.id ASC
 ";
 
 // โหมด all=1

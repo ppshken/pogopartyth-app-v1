@@ -28,6 +28,7 @@ $countSql = "
   FROM raid_rooms r
   JOIN user_raid_rooms ur ON ur.room_id = r.id
   WHERE ur.user_id = :uid
+    AND r.status <> 'closed'
     AND NOT EXISTS (
       SELECT 1 FROM raid_reviews rv
       WHERE rv.room_id = r.id AND rv.user_id = :uid
@@ -40,6 +41,8 @@ $total = (int)$stmt->fetchColumn();
 $sql = "
   SELECT
     r.id,
+    r.raid_boss_id,
+    r.pokemon_image,
     r.boss,
     r.start_time,
     r.status,
@@ -55,6 +58,7 @@ $sql = "
   JOIN user_raid_rooms ur ON ur.room_id = r.id
   JOIN users u ON u.id = r.owner_id
   WHERE ur.user_id = :uid
+    AND r.status <> 'closed'
     AND NOT EXISTS (
       SELECT 1 FROM raid_reviews rv
       WHERE rv.room_id = r.id AND rv.user_id = :uid
@@ -75,6 +79,8 @@ $items = array_map(function(array $r) {
   $max     = (int)$r['max_members'];
   return [
     'id'               => (int)$r['id'],
+    'raid_boss_id'     => $r['raid_boss_id'],
+    'pokemon_image'    => $r['pokemon_image'],
     'boss'             => $r['boss'],
     'start_time'       => $r['start_time'],
     'status'           => $r['status'],

@@ -15,8 +15,7 @@ import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../store/authStore";
 import { profile } from "../../lib/auth"; // ⬅️ API โปรไฟล์ (อยู่ด้านล่างคำตอบ)
-// ถ้า avatar ใน DB เป็น path ไม่ขึ้นต้น http ให้ต่อ BASE_URL เอง
-const BASE_URL = "http://<YOUR-HOST>/pogopartyth_api/api"; // แก้ให้ตรงของคุณ
+import { useRefetchOnFocus } from "../../hooks/useRefetchOnFocus";
 
 type FullUser = {
   id: number;
@@ -28,25 +27,30 @@ type FullUser = {
   created_at?: string | null;
 };
 
+type Stats = {
+  rooms_owned: number;
+  rooms_joined: number;
+};
+
+
 export default function Profile() {
   const router = useRouter();
-  const authUser = useAuth((s) => s.user) as any;     // user จาก store (อาจยังไม่มี field เสริม)
+  const authUser = useAuth((s) => s.user) as any; // user จาก store (อาจยังไม่มี field เสริม)
   const logout = useAuth((s) => s.clear);
 
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<FullUser | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
 
   const load = useCallback(async () => {
-    setRefreshing(true);
     try {
-      const u = await profile(); // GET /api/auth/profile.php
-      setUser(u as FullUser);
+      const { user, stats } = await profile(); // GET /api/auth/profile.php
+      setUser(user as FullUser);
+      setStats(stats as Stats);
     } catch (e: any) {
       // ถ้าเรียกไม่สำเร็จ fallback ใช้ user ใน store ไปก่อน
       setUser(authUser || null);
-    } finally {
-      setRefreshing(false);
     }
   }, [authUser]);
 
@@ -56,6 +60,8 @@ export default function Profile() {
     // แล้วค่อยรีเฟรชจาก API
     load();
   }, [authUser, load]);
+
+  useRefetchOnFocus(load, [load]);
 
   const onCopyFriendCode = async () => {
     if (!user?.friend_code) {
@@ -81,9 +87,10 @@ export default function Profile() {
     <ScrollView
       style={{ flex: 1, backgroundColor: "#F9FAFB" }}
       contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={load} />
+      }
     >
-
       {/* Card: User */}
       <View style={styles.card}>
         {/* Avatar */}
@@ -107,7 +114,15 @@ export default function Profile() {
           </Text>
 
           {/* Chips / quick actions */}
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8, justifyContent: "center" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8,
+              marginTop: 8,
+              justifyContent: "center",
+            }}
+          >
             <View style={styles.badgeDark}>
               <Ionicons name="calendar-outline" size={14} />
               <Text style={styles.badgeDarkText}>
@@ -118,7 +133,10 @@ export default function Profile() {
             {user?.trainer_name ? (
               <View style={styles.badgeMuted}>
                 <Ionicons name="ribbon-outline" size={14} color="#111827" />
-                <Text style={styles.badgeMutedText}>{"  "}{user.trainer_name}</Text>
+                <Text style={styles.badgeMutedText}>
+                  {"  "}
+                  {user.trainer_name}
+                </Text>
               </View>
             ) : null}
           </View>
@@ -138,7 +156,10 @@ export default function Profile() {
         </View>
 
         <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-          <TouchableOpacity style={styles.outlineBtn} onPress={onCopyFriendCode}>
+          <TouchableOpacity
+            style={styles.outlineBtn}
+            onPress={onCopyFriendCode}
+          >
             <Ionicons name="copy-outline" size={16} color="#111827" />
             <Text style={styles.outlineBtnText}>คัดลอก Friend Code</Text>
           </TouchableOpacity>
@@ -150,6 +171,23 @@ export default function Profile() {
             <Ionicons name="albums-outline" size={16} color="#111827" />
             <Text style={styles.outlineBtnText}>ห้องของฉัน</Text>
           </TouchableOpacity>
+        </View>
+      </View>
+      
+      {/* รายงาน สถิติการเข้าร่วม รีวิว */}
+      <View style={styles.card_stats}>
+        <Text style={styles.cardTitle}>รายงาน</Text>
+        <View style={styles.cardSection}>
+          <View style={styles.card_stats_detail}>
+            <Ionicons name="paw-outline" size={24}/>
+            <Text style={{fontSize: 12, fontWeight: "700"}}>จำนวนห้องที่สร้างทั้งหมด</Text>
+            <Text style={{fontSize: 12, fontWeight: "700"}}>{stats?.rooms_owned}</Text>
+          </View>
+          <View style={styles.card_stats_detail}>
+            <Ionicons name="invert-mode-outline" size={24}/>
+            <Text style={{fontSize: 12, fontWeight: "700"}}>จำนวนห้องที่เข้าร่วมทั้งหมด</Text>
+            <Text style={{fontSize: 12, fontWeight: "700"}}>{stats?.rooms_joined}</Text>
+          </View>
         </View>
       </View>
 
@@ -178,10 +216,24 @@ export default function Profile() {
           )}
         </TouchableOpacity>
         <View>
-          <Text style={{ color: "#9CA3AF", fontSize: 12, textAlign: "center", marginTop: 12 }}>
+          <Text
+            style={{
+              color: "#9CA3AF",
+              fontSize: 12,
+              textAlign: "center",
+              marginTop: 12,
+            }}
+          >
             เวอร์ชัน 1.0.0
           </Text>
-          <Text style={{ color: "#9CA3AF", fontSize: 12, textAlign: "center", marginTop: 4 }}>
+          <Text
+            style={{
+              color: "#9CA3AF",
+              fontSize: 12,
+              textAlign: "center",
+              marginTop: 4,
+            }}
+          >
             สร้างโดย PogoParty TH
           </Text>
         </View>
@@ -191,7 +243,12 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
-  screenTitle: { fontSize: 22, fontWeight: "800", color: "#111827", marginBottom: 12 },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 12,
+  },
 
   card: {
     backgroundColor: "#fff",
@@ -202,44 +259,111 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  avatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 12, alignSelf: "center" },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 12,
+    alignSelf: "center",
+  },
   avatarEmpty: {
-    width: 80, height: 80, borderRadius: 40, marginBottom: 12,
-    backgroundColor: "#E5E7EB", justifyContent: "center", alignItems: "center", alignSelf: "center",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 12,
+    backgroundColor: "#E5E7EB",
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
   },
   avatarLetter: { fontSize: 28, fontWeight: "800", color: "#374151" },
 
-  name: { fontSize: 18, fontWeight: "800", color: "#111827", textAlign: "center" },
+  name: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#111827",
+    textAlign: "center",
+  },
   email: { fontSize: 13, color: "#6B7280", textAlign: "center", marginTop: 2 },
 
   badgeDark: {
-    flexDirection: "row", alignItems: "center",
-    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: "flex-start",
   },
   badgeDarkText: { fontSize: 12, fontWeight: "700" },
 
   badgeMuted: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: "flex-start",
   },
   badgeMutedText: { color: "#111827", fontSize: 12, fontWeight: "700" },
 
-  cardTitle: { fontSize: 16, fontWeight: "800", color: "#111827", marginBottom: 8 },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 8,
+  },
 
   row: { flexDirection: "row", alignItems: "center", paddingVertical: 6 },
   rowText: { marginLeft: 8, color: "#374151", fontSize: 14 },
   rowValue: { color: "#111827", fontWeight: "700", marginLeft: 8 },
 
   outlineBtn: {
-    flex: 1, borderWidth: 1, borderColor: "#111827",
-    paddingVertical: 10, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8,
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#111827",
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: "#fff",
   },
   outlineBtnText: { color: "#111827", fontWeight: "800" },
 
   primaryBtn: {
-    marginTop: 10, paddingVertical: 12, borderRadius: 12,
-    alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8,
+    marginTop: 10,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
   },
   primaryBtnText: { color: "#fff", fontWeight: "800", marginLeft: 6 },
+  card_stats: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 16,
+    marginBottom: 12,
+  },
+  cardSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    gap: 8,
+  },
+  card_stats_detail: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingVertical: 20,
+    borderRadius: 14,
+    flex:1,
+    alignItems: "center",
+    gap: 8
+  }
 });

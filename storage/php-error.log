@@ -78,3 +78,109 @@ Stack trace:
 #0 C:\xampp\htdocs\pogopartyth-app-v1\api\auth\update_device_token.php(26): PDOStatement->execute(Array)
 #1 {main}
   thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\auth\update_device_token.php on line 26
+[30-Aug-2025 17:35:53 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:35:53 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:35:53 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:35:53 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:35:57 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:35:57 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:35:58 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:35:58 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:12 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:12 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:14 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:14 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:18 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:18 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:30 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:30 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:35 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:35 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:38 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[30-Aug-2025 17:36:38 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:47:44 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:47:44 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:47:44 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:47:44 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:48:06 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:48:07 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:48:07 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:48:08 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:48:08 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:48:10 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:48:10 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:48:12 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:48:12 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:49:39 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 10:49:39 Asia/Bangkok] PHP Warning:  Undefined array key "pokemin_tier" in C:\xampp\htdocs\pogopartyth-app-v1\api\raid_boss\get_raid_boss.php on line 75
+[31-Aug-2025 11:32:59 Asia/Bangkok] PHP Fatal error:  Uncaught TypeError: trim(): Argument #1 ($string) must be of type string, int given in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\create.php:21
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\create.php(21): trim(3)
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\create.php on line 21
+[31-Aug-2025 11:33:05 Asia/Bangkok] PHP Fatal error:  Uncaught TypeError: trim(): Argument #1 ($string) must be of type string, int given in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\create.php:21
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\create.php(21): trim(3)
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\create.php on line 21
+[31-Aug-2025 16:35:22 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'JOIN raid_boss rb ON rb.id = r.raid_boss_id
+WHERE r.status = 'active' AND r....' at line 18 in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\list.php:136
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\list.php(136): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\list.php on line 136
+[31-Aug-2025 17:05:19 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'close' in 'where clause' in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php:73
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php(73): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php on line 73
+[31-Aug-2025 17:05:19 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'close' in 'where clause' in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php:73
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php(73): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php on line 73
+[31-Aug-2025 17:05:21 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'close' in 'where clause' in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php:73
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php(73): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php on line 73
+[31-Aug-2025 17:05:21 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'close' in 'where clause' in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php:73
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php(73): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php on line 73
+[31-Aug-2025 17:05:22 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'close' in 'where clause' in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php:73
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php(73): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php on line 73
+[31-Aug-2025 17:05:22 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'close' in 'where clause' in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php:73
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php(73): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php on line 73
+[31-Aug-2025 17:05:23 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'close' in 'where clause' in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php:73
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php(73): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php on line 73
+[31-Aug-2025 17:05:26 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'close' in 'where clause' in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php:73
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php(73): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php on line 73
+[31-Aug-2025 17:05:26 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'close' in 'where clause' in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php:73
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php(73): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php on line 73
+[31-Aug-2025 17:05:28 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'close' in 'where clause' in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php:73
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php(73): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php on line 73
+[31-Aug-2025 17:05:28 Asia/Bangkok] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'close' in 'where clause' in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php:73
+Stack trace:
+#0 C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php(73): PDOStatement->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\pogopartyth-app-v1\api\raid\my_rooms.php on line 73

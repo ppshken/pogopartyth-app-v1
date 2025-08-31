@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useLayoutEffect } from "react";
 import {
   View,
   Text,
@@ -8,22 +8,26 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { listRooms } from "../../lib/raid";
 import { RoomCardMinimal } from "../../components/RoomCard";
 import { useRefetchOnFocus } from "../../hooks/useRefetchOnFocus";
+import HowToJoinRoomModal from "../../components/HowToJoinRoomModal";
 
 
 type Room = {
   id: number;
+  raid_boss_id: number;
+  pokemon_image: string;
   boss: string;
   start_time: string; // "YYYY-MM-DD HH:mm:ss"
   status: string;
   current_members: number;
   max_members: number;
   note?: string | null;
-  owner?: { id: number; username: string; avatar?: string | null } | null;
+  owner_username: string;
+  pokemon_tier: number;
 };
 
 export default function RoomsIndex() {
@@ -31,9 +35,25 @@ export default function RoomsIndex() {
   const [refreshing, setRefreshing] = useState(false);
   const [q, setQ] = useState("");
   const router = useRouter();
+  const navigation = useNavigation();
+  const [howto, setHowto] = useState(false);  // ✅ state โมดัล
+
+    useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => setHowto(true)}
+          style={{ paddingHorizontal: 12, paddingVertical: 6 }}
+          accessibilityRole="button"
+          accessibilityLabel="วิธีการใช้งาน"
+        >
+          <Ionicons name="help-circle-outline" size={22} color="#111827" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   const load = useCallback(async () => {
-    
     try {
       const res = await listRooms({ status: "active", page: 1, limit: 100 });
       setItems(res.items || res.rooms || []);
@@ -53,13 +73,14 @@ export default function RoomsIndex() {
     if (!s) return items;
     return items.filter((r) => {
       const boss = (r.boss || "").toLowerCase();
-      const owner = (r.owner?.username || "").toLowerCase();
+      const owner = (r.owner_username || "").toLowerCase();
       return boss.includes(s) || owner.includes(s);
     });
   }, [items, q]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
+      
       {/* แถบค้นหา */}
       <View style={styles.searchWrap}>
         <Ionicons name="search-outline" size={18} color="#6B7280" />
@@ -90,12 +111,13 @@ export default function RoomsIndex() {
         renderItem={({ item }) => (
           <RoomCardMinimal
             room={item}
-            // ⚠️ ปรับ path ให้ตรงกับโครงสร้างโปรเจกต์คุณ:
-            // ถ้าอยู่ใต้ (tabs) ให้ใช้ "/(tabs)/rooms/..."
             onPress={() => router.push(`/rooms/${item.id}`)}
           />
         )}
       />
+
+      <HowToJoinRoomModal visible={howto} onClose={() => setHowto(false)} />
+
     </View>
   );
 }

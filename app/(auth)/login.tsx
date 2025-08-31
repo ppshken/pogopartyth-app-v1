@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { login } from "../../lib/auth";
 import { useAuth } from "../../store/authStore";
-import { registerPushToken } from "../../lib/push";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -32,6 +32,7 @@ export default function Login() {
     [email, password, loading]
   );
 
+
   const onLogin = async () => {
     if (!canSubmit) return;
     setLoading(true);
@@ -41,7 +42,8 @@ export default function Login() {
         password: password.trim(),
       });
       await setAuth(user, token);
-      await registerPushToken().catch(() => {});
+      
+      console.log('token', await AsyncStorage.getItem('token'))
       router.replace("/room_raid"); // ปรับ path ให้ตรงโปรเจ็กต์คุณ
     } catch (e: any) {
       Alert.alert("Login failed", e.message || "Unknown error");

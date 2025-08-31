@@ -35,7 +35,7 @@ $db = pdo();
 // ดึงรายละเอียดห้อง + เจ้าของ (✅ เพิ่ม friend_code ของเจ้าของ)
 $stmt = $db->prepare("
   SELECT
-    r.id, r.boss, r.start_time, r.max_members, r.status, r.owner_id, r.note, r.created_at,
+    r.id, r.raid_boss_id, r.pokemon_image, r.boss, r.start_time, r.max_members, r.status, r.owner_id, r.note, r.created_at,
     u.username AS owner_username,
     u.friend_code AS owner_friend_code,
     u.avatar   AS owner_avatar
@@ -95,8 +95,10 @@ if ($authedUserId !== null) {
 jsonResponse(true, [
   'room' => [
     'id'              => (int)$room['id'],
+    'raid_boss_id'    => (int)$room['raid_boss_id'],
     'boss'            => $room['boss'],
     'start_time'      => $room['start_time'],
+    'pokemon_image'      => $room['pokemon_image'],
     'max_members'     => (int)$room['max_members'],
     'status'          => $room['status'],
     'owner'           => [

@@ -18,6 +18,8 @@ $input = getJsonInput();
  * - max_members: int (2–20)
  * - note (ออปชัน): string
  */
+$pokemon_image= isset($input['pokemon_image']) ? $input['pokemon_image'] : null;
+$raid_boss_id= isset($input['raid_boss_id']) ? (int)$input['raid_boss_id'] : null;
 $boss        = trim($input['boss'] ?? '');
 $bossId      = isset($input['boss_id']) ? (int)$input['boss_id'] : null; // ถ้าคุณมีตารางบอส แยกเป็นตัวเลข
 $start_time  = trim($input['start_time'] ?? '');
@@ -57,24 +59,14 @@ try {
     jsonResponse(false, null, 'คุณสร้างห้องถี่เกินไป ลองใหม่อีกครั้งภายใน 2 นาที', 429);
   }
 
-  // ถ้ามี boss_id และคุณต้องการ map เป็นชื่อบอสจากตาราง boss
-  if ($bossId && $boss === '') {
-    $qBoss = $db->prepare("SELECT name FROM bosses WHERE id = :id LIMIT 1");
-    $qBoss->execute([':id' => $bossId]);
-    $rowBoss = $qBoss->fetch();
-    if (!$rowBoss) {
-      $db->rollBack();
-      jsonResponse(false, null, 'ไม่พบบอสตาม boss_id', 422);
-    }
-    $boss = (string)$rowBoss['name'];
-  }
-
   // สร้างห้อง
   $stmt = $db->prepare("
-    INSERT INTO raid_rooms (boss, start_time, max_members, status, owner_id, note, created_at)
-    VALUES (:boss, :start_time, :max_members, 'active', :owner_id, :note, :created_at)
+    INSERT INTO raid_rooms (raid_boss_id, pokemon_image, boss, start_time, max_members, status, owner_id, note, created_at)
+    VALUES (:raid_boss_id, :pokemon_image, :boss, :start_time, :max_members, 'active', :owner_id, :note, :created_at)
   ");
   $stmt->execute([
+    ':raid_boss_id'=> $raid_boss_id,
+    ':pokemon_image'=> $pokemon_image,
     ':boss'        => $boss,
     ':start_time'  => $start_time,
     ':max_members' => $max_members,
@@ -99,7 +91,7 @@ try {
   // ดึงข้อมูลห้องที่สร้างพร้อมจำนวนสมาชิกปัจจุบัน (=1)
   $detail = $db->prepare("
     SELECT
-      r.id, r.boss, r.start_time, r.max_members, r.status, r.owner_id, r.note, r.created_at,
+      r.id, r.raid_boss_id, r.pokemon_image, r.boss, r.start_time, r.max_members, r.status, r.owner_id, r.note, r.created_at,
       (SELECT COUNT(*) FROM user_raid_rooms ur WHERE ur.room_id = r.id) AS current_members
     FROM raid_rooms r
     WHERE r.id = :id

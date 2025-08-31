@@ -25,6 +25,7 @@ type FullUser = {
   avatar?: string | null;
   friend_code?: string | null;
   trainer_name?: string | null;
+  created_at?: string | null;
 };
 
 export default function ProfileEdit() {
@@ -83,6 +84,7 @@ export default function ProfileEdit() {
     try {
       await updateAvatar({ uri: avatar });
       Alert.alert("สำเร็จ", "อัปเดตรูปโปรไฟล์แล้ว");
+      router.back();
     } catch (e: any) {
       Alert.alert("อัปโหลดไม่สำเร็จ", e.message || "ลองใหม่อีกครั้ง");
     } finally {
@@ -102,15 +104,20 @@ export default function ProfileEdit() {
         username: username.trim(),
         friend_code: friendCode.trim() || undefined,
       });
-      Alert.alert("บันทึกแล้ว", "แก้ไขโปรไฟล์เรียบร้อย", [
-        { text: "ตกลง", onPress: () => router.back() },
-      ]);
+      Alert.alert("บันทึกแล้ว", "แก้ไขโปรไฟล์เรียบร้อย");
+      router.back();
     } catch (e: any) {
       Alert.alert("บันทึกไม่สำเร็จ", e.message || "ลองใหม่อีกครั้ง");
     } finally {
       setSaving(false);
     }
   };
+
+  // ฟังชั่นช่อง รหัสเพิ่มเพื่อน เว้นวรรค 4
+  function formatFriendCode(v: string) {
+    const digits = v.replace(/\D/g, "").slice(0, 12);
+    return digits.replace(/(\d{4})(?=\d)/g, "$1 ").trim(); // XXXX XXXX XXXX
+  }
 
   if (loading) {
     return (
@@ -127,7 +134,6 @@ export default function ProfileEdit() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
-
         {/* การ์ดรูปโปรไฟล์ */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>รูปโปรไฟล์</Text>
@@ -136,7 +142,11 @@ export default function ProfileEdit() {
               <Image source={{ uri: avatar }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarEmpty}>
-                <Ionicons name="person-circle-outline" size={56} color="#9CA3AF" />
+                <Ionicons
+                  name="person-circle-outline"
+                  size={56}
+                  color="#9CA3AF"
+                />
               </View>
             )}
 
@@ -154,7 +164,11 @@ export default function ProfileEdit() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+                    <Ionicons
+                      name="cloud-upload-outline"
+                      size={16}
+                      color="#fff"
+                    />
                     <Text style={styles.primaryBtnText}>อัปโหลด</Text>
                   </>
                 )}
@@ -179,7 +193,7 @@ export default function ProfileEdit() {
           <Text style={styles.label}>รหัสเพิ่มเพื่อน</Text>
           <TextInput
             value={friendCode}
-            onChangeText={setFriendCode}
+            onChangeText={(t) => setFriendCode(formatFriendCode(t))}
             placeholder="เช่น 1234 5678 9012"
             placeholderTextColor="#9CA3AF"
             style={styles.input}
@@ -210,7 +224,12 @@ export default function ProfileEdit() {
 }
 
 const styles = StyleSheet.create({
-  screenTitle: { fontSize: 22, fontWeight: "800", color: "#111827", marginBottom: 12 },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 12,
+  },
 
   card: {
     backgroundColor: "#fff",
@@ -222,16 +241,36 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 16, fontWeight: "800", color: "#111827" },
 
-  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: "#F3F4F6" },
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#F3F4F6",
+  },
   avatarEmpty: {
-    width: 96, height: 96, borderRadius: 48, backgroundColor: "#F3F4F6",
-    justifyContent: "center", alignItems: "center",
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
-  label: { marginTop: 12, marginBottom: 6, color: "#374151", fontSize: 13, fontWeight: "700" },
+  label: {
+    marginTop: 12,
+    marginBottom: 6,
+    color: "#374151",
+    fontSize: 13,
+    fontWeight: "700",
+  },
   input: {
-    borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 12,
-    paddingHorizontal: 12, paddingVertical: 10, color: "#111827", backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: "#111827",
+    backgroundColor: "#fff",
   },
 
   outlineBtn: {
@@ -241,7 +280,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 12, 
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#111827",
     backgroundColor: "#fff",

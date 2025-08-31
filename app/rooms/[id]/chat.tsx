@@ -52,7 +52,7 @@ export default function ChatScreen() {
             value={text}
             onChangeText={setText}
             placeholder="พิมพ์ข้อความ..."
-            style={{ flex: 1, borderWidth: 1, borderColor: "#050505ff", padding: 12, borderRadius: 10 }}
+            style={{ flex: 1, borderWidth: 1, borderColor: "#c5c5c5ff", padding: 12, borderRadius: 10 }}
           />
           <TouchableOpacity
             onPress={onSend}

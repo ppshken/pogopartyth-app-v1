@@ -49,7 +49,7 @@ function getJsonInput(): array {
 }
 
 /** Simple HMAC token (ไม่ใช่ JWT มาตรฐาน) */
-function makeToken(int $userId, int $ttlSeconds = 86400): string {
+function makeToken(int $userId, int $ttlSeconds = 7*86400): string {
   $secret = getenv('APP_KEY') ?: 'change_me';
   $payload = [
     'user_id' => $userId,

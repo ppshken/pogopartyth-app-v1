@@ -25,5 +25,5 @@ export async function register(payload: { email: string; username: string; passw
 export async function profile() {
   const { data } = await api.get("/api/auth/profile.php", { validateStatus:()=>true });
   if (!data.success) throw new Error(data.message || "Profile failed");
-  return data.data.user;
+  return data.data;
 }

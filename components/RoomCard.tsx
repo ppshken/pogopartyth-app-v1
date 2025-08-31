@@ -1,27 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { TierStars } from "../components/TierStars";
 
 type Room = {
   id: number;
+  raid_boss_id: number;
+  pokemon_image: string;
   boss: string;
   start_time: string;
   status: string;
   current_members: number;
   max_members: number;
   note?: string | null;
-  owner?: { id: number; username: string; avatar?: string | null } | null;
+  owner_username: string;
   is_full?: boolean;
+  pokemon_tier: number;
 };
-
-const BOSS_IMAGES: Record<string, string> = {
-  Mewtwo: "https://th.portal-pokemon.com/play/resources/pokedex/img/pm/ad7ffb53f984a6623c53f01cfbc06fc8565ecbd4.png",
-  Groudon: "https://img.pokemondb.net/artwork/large/groudon.jpg",
-  Kyogre: "https://img.pokemondb.net/artwork/large/kyogre.jpg",
-  Rayquaza: "https://th.portal-pokemon.com/play/resources/pokedex/img/pm/f6a02199446c37509259046601ee6ac55542e97f.png",
-};
-const FALLBACK =
-  "https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=1200&auto=format&fit=crop";
 
 function parseStart(s: string): Date {
   const iso = s.includes("T") ? s : s.replace(" ", "T");
@@ -64,7 +59,6 @@ export function RoomCardMinimal({
   onPress?: () => void;
 }) {
   const { label, expired } = useCountdown(room.start_time);
-  const cover = BOSS_IMAGES[room.boss] ?? FALLBACK;
 
   const isFull = room.is_full ?? room.current_members >= room.max_members;
 
@@ -89,9 +83,13 @@ export function RoomCardMinimal({
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-        <Image source={{ uri: cover }} style={styles.thumb} />
+
+      {/* แสดงรูปบอส */}
+      <Image source={{ uri: room.pokemon_image }} style={styles.thumb} />
 
       <View style={{ flex: 1 }}>
+
+        {/* แสดงชื่อบอสกับ เวลา */}
         <View style={styles.topRow}>
           <Text numberOfLines={1} style={styles.title}>
             {room.boss}
@@ -114,15 +112,18 @@ export function RoomCardMinimal({
           </View>
         </View>
 
-        {room.owner?.username ? (
-          <Text numberOfLines={1} style={styles.owner}>
-            หัวห้อง: {room.owner.username}
-          </Text>
-        ) : null}
+        {/* แสดงจำนวนดาว */}
+        <TierStars pokemon_tier={room.pokemon_tier} color="#ffcc00" />
 
+        {/* แสดงหัวห้อง */}
+        <Text numberOfLines={1} style={styles.owner}>
+          หัวห้อง: {room.owner_username}
+        </Text>
+
+        {/* แสดงจำนวนคน กับ สถานะ */}
         <View style={styles.metaRow}>
           <View style={styles.people}>
-            <Ionicons name="person" size={14} color="#374151" />
+            <Ionicons name="person" size={12} color="#374151" />
             <Text style={styles.metaText}>
               {" "}
               {room.current_members}/{room.max_members}
@@ -134,11 +135,6 @@ export function RoomCardMinimal({
           </View>
         </View>
 
-        {room.note ? (
-          <Text numberOfLines={2} style={styles.note}>
-            {room.note}
-          </Text>
-        ) : null}
       </View>
     </Pressable>
   );
@@ -155,6 +151,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
     marginBottom: 12,
+    alignItems: "center"
   },
   pressed: { opacity: 0.9 },
   thumb: { width: 72, height: 72, borderRadius: 10, backgroundColor: "#F3F4F6", marginRight: 12 },
@@ -175,12 +172,10 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    // gap: 10,
-    marginTop: 8,
     justifyContent: "space-between",
   },
   people: { flexDirection: "row", alignItems: "center" },
-  metaText: { color: "#374151", fontSize: 16 },
+  metaText: { color: "#374151", fontSize: 12 },
 
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   statusText: { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 0.2 },

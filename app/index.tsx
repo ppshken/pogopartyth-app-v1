@@ -6,15 +6,14 @@ import { Redirect } from "expo-router";
 
 export default function Index() {
   const [ready, setReady] = useState(false);
-  const [href, setHref] = useState<string>("/(auth)/login"); // ดีฟอลต์ไป login
+  const [href, setHref] = useState("/(auth)/login");
 
   useEffect(() => {
     (async () => {
       try {
+        console.log('token', await AsyncStorage.getItem('token'))
         const token = await AsyncStorage.getItem("token");
-        setHref(token ? "/(tabs)/room_raid" : "/(auth)/login"); // ✅ มี token → raid_boss
-      } catch {
-        setHref("/(auth)/login");
+        setHref(token ? "/(tabs)/room_raid" : "/(auth)/login");
       } finally {
         setReady(true);
       }
@@ -24,10 +23,9 @@ export default function Index() {
   if (!ready) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator />
       </View>
     );
   }
-
   return <Redirect href={href} />;
 }

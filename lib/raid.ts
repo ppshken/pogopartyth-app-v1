@@ -25,7 +25,12 @@ export async function getRoom(room_id: number) {
 }
 
 export async function createRoom(body: {
-  boss: string; start_time: string; max_members: number; note?: string;
+  raid_boss_id: number;
+  pokemon_image: string;
+  boss: string;
+  start_time: string;
+  max_members: number;
+  note?: string;
 }) {
   const { data } = await api.post("/api/raid/create.php", body, {
     validateStatus: () => true,

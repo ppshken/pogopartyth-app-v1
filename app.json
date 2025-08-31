@@ -1,22 +1,58 @@
 {
   "expo": {
-    "name": "pogopartyth-app",
-    "slug": "pogopartyth-app",
-    "scheme": "pogopartyth",
+    "name": "PogopartyTH",
+    "slug": "pogopartyth-app-v1",
     "version": "1.0.0",
     "icon": "./assets/pogopartyth.png",
     "userInterfaceStyle": "light",
-    "plugins": ["expo-notifications"],
+    "scheme": "pogopartyth", 
+    "androidStatusBar": {
+       "barStyle": "dark-content",
+       "translucent": false,
+        "backgroundColor": "#ffffff" 
+      },
+    "plugins": [
+      
+      "expo-notifications",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          }
+        }
+      ],
+      "expo-router"
+    ],
     "ios": {
       "bundleIdentifier": "com.ppshken.pogopartyth",
       "buildNumber": "1"
     },
     "android": {
       "package": "com.ppshken.pogopartyth",
-      "versionCode": 1
+      "versionCode": 1,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "pogopartyth"
+            }
+          ]
+        }
+      ],
+      "edgeToEdgeEnabled": false
     },
     "extra": {
-      "eas": { "projectId": "e6edfdf9-73e9-4a17-a5dc-efec2368ff56" }
+      "eas": {
+        "projectId": "e6edfdf9-73e9-4a17-a5dc-efec2368ff56"
+      }
     }
   }
 }

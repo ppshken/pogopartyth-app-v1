@@ -8,7 +8,7 @@ export default function TabsLayout() {
       headerTitleStyle: { fontSize: 20, fontWeight: "800", marginBottom: 8}, 
       tabBarActiveTintColor: "#000000ff",
       tabBarInactiveTintColor: "#6b7280ff",
-      tabBarStyle: { paddingBottom: 8, height: 85, backgroundColor: "#f9fafb" },
+      tabBarStyle: { paddingBottom: 8, height: 85},
       tabBarLabelStyle: { fontSize: 12, fontWeight: "700", marginBottom: 4 },
       tabBarHideOnKeyboard: true,
       tabBarItemStyle: { marginTop: 6 },
